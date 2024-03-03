@@ -21,7 +21,7 @@ constexpr void MallocDevice(T **ptr, const size_t num_items) {
 }
 
 template <>
-void MallocDevice<void>(void **ptr, const size_t num_items) {
+inline void MallocDevice<void>(void **ptr, const size_t num_items) {
   CHECK_CUDA_CALL(cudaMalloc(ptr, num_items));
 }
 

@@ -4,14 +4,14 @@
 #include <numeric>
 #include <vector>
 
-#include "unified_vector.cuh"
+#include "cuda/unified_vector.cuh"
 
 // ----------------------------------------------------------------------------
 // Local Sums
 // ----------------------------------------------------------------------------
 
 template <typename T>
-__global__ void k_LocalPrefixSums(const T *u_input, T *u_output, const int n) {
+__global__ void k_LocalPrefixSums(const T* u_input, T* u_output, const int n) {
   constexpr auto n_threads = 128;
   constexpr auto items_per_thread = 4;
   constexpr auto tile_size = n_threads * items_per_thread;
@@ -49,7 +49,7 @@ __global__ void k_LocalPrefixSums(const T *u_input, T *u_output, const int n) {
 }
 
 static void Test_PrefixSumLocal(const int n, const int n_blocks) {
-  cu::unified_vector<unsigned int> u_data(n, 1);
+  const cu::unified_vector<unsigned int> u_data(n, 1);
   cu::unified_vector<unsigned int> u_output(n);
 
   constexpr auto n_threads = 128;
@@ -129,8 +129,8 @@ struct BlockPrefixCallbackOp {
  * @return
  */
 template <typename T>
-__global__ void k_SingleBlockExclusiveScan(const T *u_input,
-                                           T *u_output,
+__global__ void k_SingleBlockExclusiveScan(const T* u_input,
+                                           T* u_output,
                                            const int n,
                                            const T init = T()) {
   constexpr auto n_threads = 128;
@@ -154,11 +154,11 @@ __global__ void k_SingleBlockExclusiveScan(const T *u_input,
   // use input[0] instead of 0
   BlockPrefixCallbackOp prefix_op(init);
 
-  T thread_data[items_per_thread];
-
   // Have the block iterate over segments of items
   for (auto my_block_offset = 0; my_block_offset < n;
        my_block_offset += tile_size) {
+    T thread_data[items_per_thread];
+
     BlockLoad(temp_storage.load)
         .Load(u_input + my_block_offset, thread_data, n);
     __syncthreads();
@@ -227,9 +227,9 @@ TEST(PrefixSumTestRegularSelfToSelf, Test_SingleBlockPrefixSum) {
 // ----------------------------------------------------------------------------
 
 template <typename T>
-__global__ void k_LocalPrefixSums_AndSaveLastElement(const T *u_input,
-                                                     T *u_output,
-                                                     T *u_auxiliary,
+__global__ void k_LocalPrefixSums_AndSaveLastElement(const T* u_input,
+                                                     T* u_output,
+                                                     T* u_auxiliary,
                                                      const int n) {
   constexpr auto n_threads = 128;
   constexpr auto items_per_thread = 4;
@@ -277,9 +277,9 @@ __global__ void k_LocalPrefixSums_AndSaveLastElement(const T *u_input,
 }
 
 template <typename T>
-__global__ void k_MakeGlobalPrefixSum(T *u_local_sums,
-                                      T *u_global_sums,
-                                      T *u_auxiliary_summed,
+__global__ void k_MakeGlobalPrefixSum(T* u_local_sums,
+                                      T* u_global_sums,
+                                      T* u_auxiliary_summed,
                                       const int n) {
   constexpr auto n_threads = 128;
   constexpr auto items_per_thread = 4;
@@ -328,7 +328,7 @@ __global__ void k_MakeGlobalPrefixSum(T *u_local_sums,
 }
 
 static void Test_GlobalPrefixSum(const int n, const int n_blocks) {
-  cu::unified_vector<unsigned int> u_data(n, 1);
+  const cu::unified_vector<unsigned int> u_data(n, 1);
   cu::unified_vector<unsigned int> u_local_sums(n);
 
   constexpr auto n_threads = 128;
@@ -367,7 +367,7 @@ TEST(GlobalPrefixSum, Test_GlobalPrefixSum) {
   EXPECT_NO_FATAL_FAILURE(Test_GlobalPrefixSum(1 << 20, 4));  // 1048576
 }
 
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

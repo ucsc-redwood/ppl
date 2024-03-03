@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glm/vec4.hpp>
+
 #include "defines.h"
 #include "morton.h"
 

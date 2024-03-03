@@ -8,6 +8,6 @@ set_warnings("all")
 add_requires("openmp", "glm")
 
 includes("apps")
--- includes("ppl")
+includes("ppl")
 includes("tests")
 

@@ -15,12 +15,14 @@ struct OneSweep {
   explicit OneSweep(const size_t n)
       : u_sort(n),
         u_sort_alt(n),
-        u_global_histogram(kRadix * kPasses),
+        u_global_histogram(static_cast<size_t>(kRadix * kPasses)),
         u_index(kPasses) {
     for (auto& index : u_pass_histogram) {
-      index.resize(kRadix * binningThreadblocks(n));
+      index.resize(kRadix * binningThreadBlocks(n));
     }
   }
+
+  ~OneSweep() = default;
 
   OneSweep(const OneSweep&) = delete;
   OneSweep& operator=(const OneSweep&) = delete;
@@ -46,22 +48,22 @@ struct OneSweep {
     total += calculateMemorySize(u_sort_alt);
     total += calculateMemorySize(u_global_histogram);
     total += calculateMemorySize(u_index);
-    for (const auto& index : u_pass_histogram) {
-      total += calculateMemorySize(index);
+    for (const auto& pass : u_pass_histogram) {
+      total += calculateMemorySize(pass);
     }
     return total;
   }
 
-  static constexpr int binningThreadblocks(const int size) {
+  static constexpr size_t binningThreadBlocks(const size_t size) {
     // Need to match to the numbers in the '.cu' file in gpu source code
-    constexpr int partitionSize = 7680;
-    return (size + partitionSize - 1) / partitionSize;
+    constexpr auto partition_size = 7680u;
+    return (size + partition_size - 1) / partition_size;
   }
 
-  static constexpr int globalHistThreadblocks(const int size) {
+  static constexpr size_t globalHistThreadBlocks(const size_t size) {
     // Need to match to the numbers in the '.cu' file in gpu source code
-    constexpr int globalHistPartitionSize = 65536;
-    return (size + globalHistPartitionSize - 1) / globalHistPartitionSize;
+    constexpr auto global_hist_partition_size = 65536;
+    return (size + global_hist_partition_size - 1) / global_hist_partition_size;
   }
 
   cu::unified_vector<unsigned int> u_sort;

@@ -3,10 +3,10 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cub/cub.cuh>
 #include <numeric>
 #include <utility>
 
-#include "cub/cub.cuh"
 #include "gpu_kernels/all.cuh"
 #include "types/one_sweep.cuh"
 #include "types/unique.cuh"

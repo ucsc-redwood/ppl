@@ -4,7 +4,9 @@
 
 struct UniqueKeys {
   explicit UniqueKeys(const size_t n)
-      : u_contributes(n), u_unique_keys(n), u_final_pt_idx(n) {}
+      : u_unique_keys(n), u_contributes(n), u_final_pt_idx(n) {}
+
+  ~UniqueKeys() = default;
 
   UniqueKeys(const UniqueKeys&) = delete;
   UniqueKeys& operator=(const UniqueKeys&) = delete;

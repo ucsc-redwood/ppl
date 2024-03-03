@@ -13,7 +13,7 @@ __global__ void k_BetterFindDups(const T *u_keys,
   using BlockLoad = cub::
       BlockLoad<T, n_threads, items_per_thread, cub::BLOCK_LOAD_WARP_TRANSPOSE>;
   using BlockDiscontinuity = cub::BlockDiscontinuity<T, n_threads>;
-  using BlockStore = cub::BlockStore<int,
+  using BlockStore = cub::BlockStore<T,
                                      n_threads,
                                      items_per_thread,
                                      cub::BLOCK_STORE_WARP_TRANSPOSE>;
