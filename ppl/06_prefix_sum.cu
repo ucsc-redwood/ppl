@@ -1,57 +1,81 @@
-#include <cub/cub.cuh>
+#include "cuda/agents/prefix_sum_agent.cuh"
 
 namespace gpu {
 
+// ============================================================================
+// Kernel entry points (template's implementation)
+// ============================================================================
+
 template <typename T>
-__global__ void k_LocalPrefixSums(const T *u_input, T *u_output, const int n) {
-  constexpr auto n_threads = 128;
-  constexpr auto items_per_thread = 4;
-  constexpr auto tile_size = n_threads * items_per_thread;
+__global__ void k_PrefixSumLocal(const T* u_input,
+                                 T* u_output,
+                                 const int n,
+                                 T* u_auxiliary) {
+  using TempStorage = typename PrefixSumAgent<T>::TempStorage_LoadScanStore;
+  __shared__ TempStorage temp_storage;
 
-  using BlockLoad = cub::
-      BlockLoad<T, n_threads, items_per_thread, cub::BLOCK_LOAD_WARP_TRANSPOSE>;
-  using BlockScan = cub::BlockScan<T, n_threads>;
-  using BlockStore = cub::BlockStore<T,
-                                     n_threads,
-                                     items_per_thread,
-                                     cub::BLOCK_STORE_WARP_TRANSPOSE>;
-
-  __shared__ union {
-    typename BlockLoad::TempStorage load;
-    typename BlockScan::TempStorage scan;
-    typename BlockStore::TempStorage store;
-  } temp_storage;
-
-  const auto num_tiles = (n + tile_size - 1) / tile_size;
-
-  for (auto my_block_idx = blockIdx.x; my_block_idx < num_tiles;
-       my_block_idx += gridDim.x) {
-    T thread_data[items_per_thread];
-    BlockLoad(temp_storage.load)
-        .Load(u_input + my_block_idx * tile_size, thread_data);
-    __syncthreads();
-
-    BlockScan(temp_storage.scan).ExclusiveSum(thread_data, thread_data);
-    __syncthreads();
-
-    BlockStore(temp_storage.store)
-        .Store(u_output + my_block_idx * tile_size, thread_data);
-    __syncthreads();
-  }
+  // Process tiles
+  PrefixSumAgent<T> agent(n);
+  agent.Process_LocalPrefixSums(temp_storage, u_input, u_output, u_auxiliary);
 }
 
-// =============================================================================
-// Explicit Instantiation (int, unsigned int)
-// =============================================================================
+template <typename T>
+__global__ void k_SingleBlockExclusiveScan(const T* u_input,
+                                           T* u_output,
+                                           const int n) {
+  using TempStorage = typename PrefixSumAgent<T>::TempStorage_LoadScanStore;
+  __shared__ TempStorage temp_storage;
 
-// for find duplicate kernel
-template __global__ void k_LocalPrefixSums(const unsigned int *u_input,
-                                           unsigned int *u_output,
-                                           const int n);
+  // Process tiles
+  PrefixSumAgent<T> agent(n);
+  agent.Process_SingleBlockExclusiveScan(temp_storage, u_input, u_output);
+}
 
-// for edge count kernel
-template __global__ void k_LocalPrefixSums(const int *u_input,
-                                           int *u_output,
-                                           const int n);
+template <typename T>
+__global__ void k_MakeGlobalPrefixSum(const T* u_local_sums,
+                                      const T* u_auxiliary_summed,
+                                      T* u_global_sums,
+                                      const int n) {
+  using TempStorage = typename PrefixSumAgent<T>::TempStorage_LoadStore;
+  __shared__ TempStorage temp_storage;
+
+  // Process tiles
+  PrefixSumAgent<T> agent(n);
+  agent.Process_GlobalPrefixSum(
+      temp_storage, u_local_sums, u_auxiliary_summed, u_global_sums);
+}
+
+// ============================================================================
+// Instantiations (int and unsigned int)
+// ============================================================================
+
+template __global__ void k_PrefixSumLocal(const int* u_input,
+                                          int* u_output,
+                                          int n,
+                                          int* u_auxiliary);
+
+template __global__ void k_SingleBlockExclusiveScan(const int* u_input,
+                                                    int* u_output,
+                                                    int n);
+
+template __global__ void k_MakeGlobalPrefixSum(const int* u_local_sums,
+                                               const int* u_auxiliary_summed,
+                                               int* u_global_sums,
+                                               int n);
+
+template __global__ void k_PrefixSumLocal(const unsigned int* u_input,
+                                          unsigned int* u_output,
+                                          int n,
+                                          unsigned int* u_auxiliary);
+
+template __global__ void k_SingleBlockExclusiveScan(const unsigned int* u_input,
+                                                    unsigned int* u_output,
+                                                    int n);
+
+template __global__ void k_MakeGlobalPrefixSum(
+    const unsigned int* u_local_sums,
+    const unsigned int* u_auxiliary_summed,
+    unsigned int* u_global_sums,
+    int n);
 
 }  // namespace gpu

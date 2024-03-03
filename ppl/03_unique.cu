@@ -11,7 +11,8 @@
 //   constexpr auto tile_size = n_threads * items_per_thread;
 
 //   using BlockLoad = cub::
-//       BlockLoad<T, n_threads, items_per_thread, cub::BLOCK_LOAD_WARP_TRANSPOSE>;
+//       BlockLoad<T, n_threads, items_per_thread,
+//       cub::BLOCK_LOAD_WARP_TRANSPOSE>;
 //   using BlockDiscontinuity = cub::BlockDiscontinuity<T, n_threads>;
 //   using BlockStore = cub::BlockStore<T,
 //                                      n_threads,
@@ -49,7 +50,8 @@
 
 //     BlockDiscontinuity(temp_storage.discontinuity)
 //         .FlagHeads(
-//             head_flags, thread_data, cub::Inequality(), tile_predecessor_item);
+//             head_flags, thread_data, cub::Inequality(),
+//             tile_predecessor_item);
 //     __syncthreads();
 
 //     BlockStore(temp_storage.store)
