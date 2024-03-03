@@ -24,17 +24,9 @@ static void Test_Unique(const int n, const int n_blocks) {
 
   // temporary memory
   cu::unified_vector<int> u_flag_heads(n);
-  const auto prefix_sum_num_tiles =
-      cub::DivideAndRoundUp(n, gpu::PrefixSumAgent<int>::tile_size);
-  cu::unified_vector<int> u_auxiliary(prefix_sum_num_tiles);
 
-  gpu::dispatch_Unique(n_blocks,
-                       stream,
-                       u_data.data(),
-                       u_output.data(),
-                       u_flag_heads.data(),
-                       u_auxiliary.data(),
-                       n);
+  gpu::dispatch_Unique_easy(
+      n_blocks, stream, u_data.data(), u_output.data(), u_flag_heads.data(), n);
   SYNC_STREAM(stream);
 
   // check with cpu
@@ -42,12 +34,14 @@ static void Test_Unique(const int n, const int n_blocks) {
   const auto it = std::unique(cpu_data.begin(), cpu_data.end());
   const auto cpu_num_unique = std::distance(cpu_data.begin(), it);
 
+  const auto gpu_num_unique = u_flag_heads[n - 1] + 1;
+  EXPECT_EQ(cpu_num_unique, gpu_num_unique);
+
   const auto is_equal = std::equal(
       u_output.begin(), u_output.begin() + cpu_num_unique, cpu_data.begin());
 
-  for (int i = 0; i < 2048; ++i) {
-    std::cout << "[" << i << "] " << u_data[i] << " -\t" << u_output[i] << "\t"
-              << cpu_data[i] << std::endl;
+  for (auto i = 0; i < cpu_num_unique; ++i) {
+    EXPECT_EQ(u_output[i], cpu_data[i]);
   }
 
   EXPECT_TRUE(is_equal);
@@ -59,6 +53,12 @@ TEST(Test_UniqueRegular, Test_Unique) {
   EXPECT_NO_FATAL_FAILURE(Test_Unique(1 << 10, 1));  // 1024
   EXPECT_NO_FATAL_FAILURE(Test_Unique(1 << 16, 2));  // 65536
   EXPECT_NO_FATAL_FAILURE(Test_Unique(1 << 20, 4));  // 1048576
+}
+
+TEST(Test_UniqueIrregular, Test_Unique) {
+  EXPECT_NO_FATAL_FAILURE(Test_Unique(114514, 1));
+  EXPECT_NO_FATAL_FAILURE(Test_Unique(640 * 480, 2));
+  EXPECT_NO_FATAL_FAILURE(Test_Unique(1920 * 1080, 16));
 }
 
 int main(int argc, char **argv) {
