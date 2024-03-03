@@ -388,7 +388,7 @@ __global__ void k_DigitBinningPass_Original(
     __syncthreads();
 
 // scatter runs of keys into device memory
-#pragma unroll BIN_KEYS_PER_THREAD
+#pragma unroll 
     for (unsigned int i = threadIdx.x; i < BIN_PART_SIZE; i += blockDim.x)
       alt[s_localHistogram[s_warpHistograms[i] >> radixShift & RADIX_MASK] +
           i] = s_warpHistograms[i];
@@ -630,7 +630,7 @@ __global__ void k_DigitBinningPass(unsigned int* sort,
       __syncthreads();
 
 // scatter runs of keys into device memory
-#pragma unroll BIN_KEYS_PER_THREAD
+#pragma unroll 
       for (unsigned int i = threadIdx.x; i < BIN_PART_SIZE; i += blockDim.x)
         alt[s_localHistogram[s_warpHistograms[i] >> radixShift & RADIX_MASK] +
             i] = s_warpHistograms[i];
