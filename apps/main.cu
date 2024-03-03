@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cub/cub.cuh>
 #include <iostream>
 #include <memory>
 
@@ -11,6 +12,8 @@
 //
 #include "cuda/dispatchers/init_dispatch.cuh"
 #include "cuda/dispatchers/morton_dispatch.cuh"
+#include "cuda/dispatchers/sort_dispatch.cuh"
+#include "cuda/dispatchers/unique_dispatch.cuh"
 
 // ok let's list out some memories we need
 
@@ -40,20 +43,29 @@ struct NaivePipe {
     cu::unified_vector<unsigned int> u_sort_alt;
     cu::unified_vector<unsigned int> u_global_histogram;
     cu::unified_vector<unsigned int> u_index;
-    std::array<cu::unified_vector<unsigned int>, 4> u_pass_histogram;
+    cu::unified_vector<unsigned int> u_first_pass_histogram;
+    cu::unified_vector<unsigned int> u_second_pass_histogram;
+    cu::unified_vector<unsigned int> u_third_pass_histogram;
+    cu::unified_vector<unsigned int> u_fourth_pass_histogram;
   } sort_tmp;
 
  public:
   explicit NaivePipe(const int n) : n(n) {
+    // Essential
     u_points.resize(n);
     u_morton_keys.resize(n);
 
+    // Temporary storages for Sort
+    constexpr auto radix = 256;
+    constexpr auto passes = 4;
+    const auto binning_thread_blocks = cub::DivideAndRoundUp(n, 7680);
     sort_tmp.u_sort_alt.resize(n);
-    sort_tmp.u_global_histogram.resize(256 * 4);
-    sort_tmp.u_index.resize(4);
-    // for (auto& pass : sort_tmp.u_pass_histogram) {
-    // pass.resize(256 *
-    // }
+    sort_tmp.u_global_histogram.resize(radix * passes);
+    sort_tmp.u_index.resize(passes);
+    sort_tmp.u_first_pass_histogram.resize(radix * binning_thread_blocks);
+    sort_tmp.u_second_pass_histogram.resize(radix * binning_thread_blocks);
+    sort_tmp.u_third_pass_histogram.resize(radix * binning_thread_blocks);
+    sort_tmp.u_fourth_pass_histogram.resize(radix * binning_thread_blocks);
   }
 
   void attachStream(const cudaStream_t stream) {
@@ -62,31 +74,12 @@ struct NaivePipe {
     ATTACH_STREAM_SINGLE(sort_tmp.u_sort_alt.data());
     ATTACH_STREAM_SINGLE(sort_tmp.u_global_histogram.data());
     ATTACH_STREAM_SINGLE(sort_tmp.u_index.data());
-    for (auto& pass : sort_tmp.u_pass_histogram) {
-      ATTACH_STREAM_SINGLE(pass.data());
-    }
+    ATTACH_STREAM_SINGLE(sort_tmp.u_first_pass_histogram.data());
+    ATTACH_STREAM_SINGLE(sort_tmp.u_second_pass_histogram.data());
+    ATTACH_STREAM_SINGLE(sort_tmp.u_third_pass_histogram.data());
+    ATTACH_STREAM_SINGLE(sort_tmp.u_fourth_pass_histogram.data());
   }
-
-}
-
-void new_dispatch_Sort(
-  const int grid_size,
-  const cudaStream_t stream,
-
-  unsigned int* u_sort,
-  unsigned int* u_sort_alt,
-  unsigned int* u_global_histogram,
-  unsigned int* u_index,
-  unsigned int* u_pass_histogram,
-  size_t n
-){
-  const auto logical_blocks = cub::DivideAndRoundUp(n, 65536);
-
-  gpu::k_GlobalHistogram_WithLogicalBlocks(
-      u_sort, u_global_histogram, n, logical_blocks
-      // grid_size,
-  )
-}
+};
 
 int main(const int argc, const char** argv) {
   AppParams params(argc, argv);
@@ -128,48 +121,8 @@ int main(const int argc, const char** argv) {
   // peek 1024 morton keys
 
   for (auto i = 0; i < 32; ++i) {
-    std::cout << i << ":\t" << u_morton_keys[i] << std::endl;
+    std::cout << i << ":\t" << pipe->u_morton_keys[i] << std::endl;
   }
-
-  // const std::array<std::unique_ptr<Pipe>, n_streams> pipes{
-  //     std::make_unique<Pipe>(params.n),
-  // };
-
-  // for (auto i = 0; i < n_streams; ++i) {
-  //   pipes[i]->attachStream(streams[i]);
-  // }
-
-  // {
-  //   gpu::dispatchKernel(gpu::k_InitRandomVec4,
-  //                       params.n_blocks,
-  //                       streams[0],
-  //                       // *** original arguments start ***
-  //                       pipes[0]->getPoints(),
-  //                       params.n,
-  //                       params.min_coord,
-  //                       params.getRange(),
-  //                       params.seed);
-
-  //   gpu::dispatchKernel(gpu::k_ComputeMortonCode,
-  //                       params.n_blocks,
-  //                       streams[0],
-  //                       // *** original arguments start ***
-  //                       pipes[0]->getPoints(),
-  //                       pipes[0]->getMortonKeys(),
-  //                       params.n,
-  //                       params.min_coord,
-  //                       params.getRange());
-
-  //   gpu::dispatch_RadixSort(params.n_blocks, streams[0], pipes[0]->onesweep);
-
-  //   SYNC_STREAM(streams[0]);
-  // }
-
-  // // ------------------------------
-
-  // auto is_sorted = std::is_sorted(pipes[0]->onesweep.getSort(),
-  //                                 pipes[0]->onesweep.getSort() + params.n);
-  // spdlog::info("is_sorted: {}", is_sorted);
 
   spdlog::info("Done");
   for (auto& stream : streams) {

@@ -5,7 +5,7 @@
 namespace gpu {
 
 __global__ void k_GlobalHistogram(unsigned int *sort,
-                                  unsigned int *globalHistogram,
+                                  unsigned int *global_histogram,
                                   unsigned int size);
 
 __global__ void k_Scan(unsigned int *globalHistogram,

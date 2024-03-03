@@ -1,4 +1,4 @@
-add_requires("gtest")
+add_requires("gtest", "spdlog")
 
 for _, file in ipairs(os.files("test_*.cu")) do
     local target_name = path.basename(file)
@@ -7,7 +7,7 @@ for _, file in ipairs(os.files("test_*.cu")) do
         add_includedirs("$(projectdir)/include")
         add_files(file)
         add_cugencodes("native")
-        add_packages("gtest")
+        add_packages("gtest", "spdlog")
         add_deps("ppl")
 end
 

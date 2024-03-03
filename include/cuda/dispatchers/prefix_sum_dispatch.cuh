@@ -1,7 +1,9 @@
 #pragma once
 
+#include <spdlog/spdlog.h>
+
 #include "cuda/agents/prefix_sum_agent.cuh"
-#include "cuda/kernels/prefix_sum.cuh"
+#include "cuda/kernels/06_prefix_sum.cuh"
 
 namespace gpu {
 
@@ -30,11 +32,26 @@ void dispatch_PrefixSum(const int grid_size,
 
   const auto n_tiles = cub::DivideAndRoundUp(n, tile_size);
 
+  spdlog::debug("Dispatching k_PrefixSumLocal with ({} blocks, {} threads)",
+                grid_size,
+                n_threads);
+
   k_PrefixSumLocal<<<grid_size, n_threads, 0, stream>>>(
       u_data, u_global_sums, n, u_auxiliary);
 
+  spdlog::debug(
+      "Dispatching k_SingleBlockExclusiveScan with (1 blocks, {} "
+      "threads)",
+      n_threads);
+
   k_SingleBlockExclusiveScan<<<1, n_threads, 0, stream>>>(
       u_auxiliary, u_auxiliary, n_tiles);
+
+  spdlog::debug(
+      "Dispatching k_MakeGlobalPrefixSum with ({} blocks, {} "
+      "threads)",
+      grid_size,
+      n_threads);
 
   k_MakeGlobalPrefixSum<<<grid_size, n_threads, 0, stream>>>(
       u_global_sums, u_auxiliary, u_global_sums, n);

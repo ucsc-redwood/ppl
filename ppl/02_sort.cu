@@ -85,7 +85,7 @@ namespace gpu {
 #define FLAG_MASK 3
 
 __global__ void k_GlobalHistogram(unsigned int* sort,
-                                  unsigned int* globalHistogram,
+                                  unsigned int* global_histogram,
                                   const unsigned int size) {
   __shared__ unsigned int s_globalHistFirst[RADIX * 2];
   __shared__ unsigned int s_globalHistSec[RADIX * 2];
@@ -162,13 +162,13 @@ __global__ void k_GlobalHistogram(unsigned int* sort,
 
     // reduce and add to device
     for (unsigned int i = threadIdx.x; i < RADIX; i += blockDim.x) {
-      atomicAdd(&globalHistogram[i],
+      atomicAdd(&global_histogram[i],
                 s_globalHistFirst[i] + s_globalHistFirst[i + RADIX]);
-      atomicAdd(&globalHistogram[i + SEC_RADIX_START],
+      atomicAdd(&global_histogram[i + SEC_RADIX_START],
                 s_globalHistSec[i] + s_globalHistSec[i + RADIX]);
-      atomicAdd(&globalHistogram[i + THIRD_RADIX_START],
+      atomicAdd(&global_histogram[i + THIRD_RADIX_START],
                 s_globalHistThird[i] + s_globalHistThird[i + RADIX]);
-      atomicAdd(&globalHistogram[i + FOURTH_RADIX_START],
+      atomicAdd(&global_histogram[i + FOURTH_RADIX_START],
                 s_globalHistFourth[i] + s_globalHistFourth[i + RADIX]);
     }
   }
