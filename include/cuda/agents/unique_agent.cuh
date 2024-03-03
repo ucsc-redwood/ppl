@@ -6,6 +6,10 @@
 
 namespace gpu {
 
+// ----------------------------------------------------------------------------
+// Agent class
+// ----------------------------------------------------------------------------
+
 struct UniqueAgent {
   static constexpr auto n_threads = 256;
   static constexpr auto items_per_thread = 4;
@@ -78,7 +82,8 @@ struct UniqueAgent {
 
     for (auto tile_idx = blockIdx.x; tile_idx < num_tiles;
          tile_idx += gridDim.x) {
-      if (const auto idx = tile_idx * blockDim.x + threadIdx.x; idx < n) {
+      const auto idx = tile_idx * blockDim.x + threadIdx.x;
+      if (idx < n) {
         u_keys_out[u_flag_heads_sums[idx]] = u_keys[idx];
       }
     }

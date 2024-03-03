@@ -35,9 +35,7 @@
  *
  ******************************************************************************/
 
-// #include "cuda/kernels/02_sort.cuh"
-// #include "cuda/kernels/sort/common.cuh"
-#include "kernels/sort/common.cuh"
+#include "cuda/kernels/common.cuh"
 
 namespace gpu {
 
