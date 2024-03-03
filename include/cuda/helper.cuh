@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 // if in release mode, we don't want to check for cuda errors
 #ifdef NDEBUG
 #define CHECK_CUDA_CALL(x) x

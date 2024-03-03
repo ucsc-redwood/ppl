@@ -1,32 +1,38 @@
-#include <cub/cub.cuh>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+
 #include <iostream>
 
-#include "cuda/dispatchers/prefix_sum_dispatch.cuh"
-#include "cuda/unified_vector.cuh"
+#include "cuda/helper.cuh"
+
+__global__ void test_kernel(float* u_input, const int n) {
+  const auto idx = threadIdx.x + blockDim.x * blockIdx.x;
+  if (idx < n) {
+    u_input[idx] = 1.0f;
+  }
+}
 
 int main() {
-  constexpr auto n = 1 << 16;  // 65536
-  constexpr auto n_blocks = 16;
-
-  cu::unified_vector<unsigned int> u_data(n, 1);
-  cu::unified_vector<unsigned int> u_output(n);
-
-  constexpr auto tile_size = gpu::PrefixSumAgent<unsigned int>::tile_size;
-  const auto n_tiles = cub::DivideAndRoundUp(n, tile_size);
-  cu::unified_vector<unsigned int> u_auxiliary(n_tiles);
+  const int n = 1000;
 
   cudaStream_t stream;
   CHECK_CUDA_CALL(cudaStreamCreate(&stream));
 
-  gpu::dispatch_PrefixSum(
-      n_blocks, stream, u_data.data(), u_output.data(), u_auxiliary.data(), n);
+  float* u_input;
+  CHECK_CUDA_CALL(cudaMallocManaged(&u_input, n * sizeof(float)));
+
+  CHECK_CUDA_CALL(
+      cudaStreamAttachMemAsync(stream, u_input, 0, cudaMemAttachSingle));
+
+  test_kernel<<<1, 256, 0, stream>>>(u_input, n);
   SYNC_STREAM(stream);
 
-  // peek 32 elements
-  std::copy(u_output.begin(),
-            u_output.begin() + 2048,
-            std::ostream_iterator<unsigned int>(std::cout, " "));
+  // peek 10 elements
+  for (int i = 0; i < 10; i++) {
+    std::cout << u_input[i] << std::endl;
+  }
 
+  CHECK_CUDA_CALL(cudaFree(u_input));
   CHECK_CUDA_CALL(cudaStreamDestroy(stream));
   return 0;
 }

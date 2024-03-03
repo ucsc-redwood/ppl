@@ -1,33 +1,24 @@
 #pragma once
 
-#include <cstdint>
+#include <cuda_runtime_api.h>
 
 namespace gpu {
 
-__global__ void k_GlobalHistogram_WithLogicalBlocks(uint32_t *sort,
-                                                    uint32_t *globalHistogram,
-                                                    uint32_t size,
-                                                    int logicalBlocks);
-__global__ void k_DigitBinning_WithLogicalBlocks(
-    uint32_t *globalHistogram,
-    uint32_t *sort,
-    uint32_t *alt,
-    volatile uint32_t *passHistogram,
-    uint32_t *index,
-    uint32_t size,
-    uint32_t radixShift,
-    int logicalBlocks);
+__global__ void k_GlobalHistogram(unsigned int *sort,
+                                  unsigned int *globalHistogram,
+                                  unsigned int size);
 
-[[deprecated("use the k_GlobalHistogram_WithLogicalBlocks")]] __global__ void
-k_GlobalHistogram(uint32_t *sort, uint32_t *globalHistogram, uint32_t size);
+__global__ void k_Scan(unsigned int *globalHistogram,
+                       unsigned int *firstPassHistogram,
+                       unsigned int *secPassHistogram,
+                       unsigned int *thirdPassHistogram,
+                       unsigned int *fourthPassHistogram);
 
-[[deprecated("use the k_DigitBinning_WithLogicalBlocks")]] __global__ void
-k_DigitBinning(uint32_t *globalHistogram,
-               uint32_t *sort,
-               uint32_t *alt,
-               volatile uint32_t *passHistogram,
-               uint32_t *index,
-               uint32_t size,
-               uint32_t radixShift);
+__global__ void k_DigitBinningPass(unsigned int *sort,
+                                   unsigned int *alt,
+                                   volatile unsigned int *passHistogram,
+                                   volatile unsigned int *index,
+                                   unsigned int size,
+                                   unsigned int radixShift);
 
 }  // namespace gpu
