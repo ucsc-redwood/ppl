@@ -73,7 +73,7 @@ TEST(GlobalPrefixSumIrregular, Test_PrefixSum) {
   EXPECT_NO_FATAL_FAILURE(Test_PrefixSum(1920 * 1080, 16));
 }
 
-TEST(GlobalPrefixSumArbitraryInput, Test_PrefixSum) {
+TEST(GlobalPrefixSumArbitraryInput, Test_PrefixSumArbitaryInput_Int) {
   EXPECT_NO_FATAL_FAILURE(Test_PrefixSumArbitaryInput_Int(1 << 10, 1));
   EXPECT_NO_FATAL_FAILURE(Test_PrefixSumArbitaryInput_Int(1 << 16, 2));
   EXPECT_NO_FATAL_FAILURE(Test_PrefixSumArbitaryInput_Int(1 << 20, 4));

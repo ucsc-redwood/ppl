@@ -1,5 +1,7 @@
 #pragma once
 
+#include <device_launch_parameters.h>
+
 #include <cub/cub.cuh>
 
 namespace gpu {

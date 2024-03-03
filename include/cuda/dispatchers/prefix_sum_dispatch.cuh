@@ -65,4 +65,5 @@ dispatch_PrefixSum(const int grid_size,
   k_MakeGlobalPrefixSum<<<grid_size, n_threads, 0, stream>>>(
       u_local_sums, u_auxiliary, u_global_sums, n);
 }
+
 }  // namespace gpu

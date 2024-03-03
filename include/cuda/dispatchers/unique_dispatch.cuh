@@ -1,0 +1,59 @@
+#pragma once
+
+#include <numeric>
+
+#include "cuda/agents/unique_agent.cuh"
+#include "cuda/helper.cuh"
+#include "cuda/kernels/unique.cuh"
+#include "prefix_sum_dispatch.cuh"
+
+namespace gpu {
+
+[[deprecated("currently broken")]] inline void dispatch_Unique(
+    const int grid_size,
+    const cudaStream_t stream,
+    const unsigned int* u_keys,
+    unsigned int* u_keys_out,
+    int* u_flag_heads,
+    int* u_auxiliary,
+    const int n) {
+  constexpr auto n_threads = UniqueAgent::n_threads;
+
+  k_FindDups<<<grid_size, n_threads, 0, stream>>>(u_keys, u_flag_heads, n);
+
+  dispatch_PrefixSum(
+      grid_size, stream, u_flag_heads, u_flag_heads, u_auxiliary, n);
+
+  k_MoveDups<<<grid_size, n_threads, 0, stream>>>(
+      u_keys, u_flag_heads, n, u_keys_out, nullptr);
+}
+
+/**
+ * @brief Remove duplicate elements from a sorted array. Need to supply a
+ * 'flag_heads' array of size 'n' ints for temporary storage.
+ *
+ * @param grid_size
+ * @param stream
+ * @param u_keys
+ * @param u_keys_out
+ * @param u_flag_heads
+ * @param n
+ */
+inline void dispatch_Unique_easy(const int grid_size,
+                                 const cudaStream_t stream,
+                                 const unsigned int* u_keys,
+                                 unsigned int* u_keys_out,
+                                 int* u_flag_heads,
+                                 const int n) {
+  constexpr auto n_threads = UniqueAgent::n_threads;
+
+  k_FindDups<<<grid_size, n_threads, 0, stream>>>(u_keys, u_flag_heads, n);
+
+  // In easy version, we use cpu partial_sum instead of gpu prefix sum
+  SYNC_STREAM(stream);
+  std::partial_sum(u_flag_heads, u_flag_heads + n, u_flag_heads);
+
+  k_MoveDups<<<grid_size, n_threads, 0, stream>>>(
+      u_keys, u_flag_heads, n, u_keys_out, nullptr);
+}
+}  // namespace gpu
