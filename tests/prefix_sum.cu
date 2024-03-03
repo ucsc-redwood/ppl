@@ -9,7 +9,6 @@
 
 static void Test_PrefixSum(const int n, const int n_blocks) {
   const cu::unified_vector<unsigned int> u_data(n, 1);
-  // cu::unified_vector<unsigned int> u_local_sums(n);
   cu::unified_vector<unsigned int> u_output(n);
 
   constexpr auto tile_size = gpu::PrefixSumAgent<unsigned int>::tile_size;
@@ -19,13 +18,8 @@ static void Test_PrefixSum(const int n, const int n_blocks) {
   cudaStream_t stream;
   CHECK_CUDA_CALL(cudaStreamCreate(&stream));
 
-  gpu::dispatch_PrefixSum(n_blocks,
-                          stream,
-                          u_data.data(),
-                          // u_local_sums.data(),
-                          u_output.data(),
-                          u_auxiliary.data(),
-                          n);
+  gpu::dispatch_PrefixSum(
+      n_blocks, stream, u_data.data(), u_output.data(), u_auxiliary.data(), n);
   SYNC_STREAM(stream);
 
   for (auto i = 0; i < n; ++i) {
