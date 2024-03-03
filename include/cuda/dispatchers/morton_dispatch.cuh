@@ -5,7 +5,6 @@
 
 #include "cuda/kernels/01_morton.cuh"
 
-
 namespace gpu {
 
 inline void dispatch_ComputeMorton(const int grid_size,
