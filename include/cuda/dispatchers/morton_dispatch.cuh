@@ -17,10 +17,9 @@ inline void dispatch_ComputeMorton(const int grid_size,
   constexpr auto block_size = 768;
 
   spdlog::debug(
-      "[stream {}] Dispatching k_ComputeMortonCode with ({} blocks, {} "
+      "Dispatching k_ComputeMortonCode with ({} blocks, {} "
       "threads) "
       "on {} items",
-      reinterpret_cast<int>(stream),
       grid_size,
       block_size,
       n);

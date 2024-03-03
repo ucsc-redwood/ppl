@@ -17,9 +17,8 @@ inline void dispatch_InitRandomVec4(const int grid_size,
   constexpr auto block_size = 512;
 
   spdlog::debug(
-      "[stream {}] Dispatching k_InitRandomVec4 with ({} blocks, {} threads) "
+      "Dispatching k_InitRandomVec4 with ({} blocks, {} threads) "
       "on {} items",
-      reinterpret_cast<int>(stream),
       grid_size,
       block_size,
       n);
