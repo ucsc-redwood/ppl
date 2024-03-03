@@ -16,7 +16,7 @@ static void Test_Unique(const int n, const int n_blocks) {
   std::uniform_int_distribution<unsigned int> dis(0, n / 2);
 
   std::generate(
-      u_data.begin(), u_data.end(), [&dis, &gen]() { return dis(gen); });
+      u_data.begin(), u_data.end(), [&dis, &gen] { return dis(gen); });
   std::sort(u_data.begin(), u_data.end());
 
   cudaStream_t stream;
