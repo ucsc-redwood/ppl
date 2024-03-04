@@ -21,4 +21,5 @@ struct AppParams {
 
   // Debug parameters
   bool debug_print = false;
+  bool use_cpu = false;
 };

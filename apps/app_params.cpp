@@ -17,6 +17,8 @@ AppParams::AppParams(const int argc, const char **argv) {
 
   app.add_flag("-d,--debug", debug_print, "Print debug information");
 
+  app.add_flag("-x", use_cpu, "Use CPU");
+
   try {
     app.parse(argc, argv);
   } catch (const CLI::ParseError &e) {
