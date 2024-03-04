@@ -1,9 +1,7 @@
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
 #include <array>
 #include <cub/cub.cuh>
-#include <iostream>
 #include <memory>
 
 #include "app_params.hpp"
