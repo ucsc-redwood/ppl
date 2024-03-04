@@ -5,7 +5,7 @@ struct AppParams {
 
   explicit AppParams(int argc, const char** argv);
 
-  [[nodiscard]] float getRange() const { return max_coord - min_coord; } 
+  [[nodiscard]] float getRange() const { return max_coord - min_coord; }
 
   void print_params() const;
 

@@ -38,28 +38,28 @@ struct NaivePipe {
 
   int n_pts;
   int n_unique_keys;
-  int n_brt_nodes; // unique_keys - 1
-  int n_oct_nodes; // computed late... we use 0.6 * n as a guess
+  int n_brt_nodes;  // unique_keys - 1
+  int n_oct_nodes;  // computed late... we use 0.6 * n as a guess
 
   cu::unified_vector<glm::vec4> u_points;
   cu::unified_vector<unsigned int> u_morton_keys;
   cu::unified_vector<unsigned int> u_unique_morton_keys;
 
   struct {
-    cu::unified_vector<unsigned int> u_sort_alt;             // n
-    cu::unified_vector<unsigned int> u_global_histogram;     // 256 * 4
-    cu::unified_vector<unsigned int> u_index;                // 4
-    cu::unified_vector<unsigned int> u_first_pass_histogram; // 256 * xxx 
+    cu::unified_vector<unsigned int> u_sort_alt;              // n
+    cu::unified_vector<unsigned int> u_global_histogram;      // 256 * 4
+    cu::unified_vector<unsigned int> u_index;                 // 4
+    cu::unified_vector<unsigned int> u_first_pass_histogram;  // 256 * xxx
     cu::unified_vector<unsigned int> u_second_pass_histogram;
     cu::unified_vector<unsigned int> u_third_pass_histogram;
     cu::unified_vector<unsigned int> u_fourth_pass_histogram;
   } sort_tmp;
 
   struct {
-    cu::unified_vector<int> u_flag_heads; // n
+    cu::unified_vector<int> u_flag_heads;  // n
   } unique_tmp;
 
-  explicit NaivePipe(const int n) : n(n) {
+  explicit NaivePipe(const int n) : n_pts(n) {
     // Essential
     u_points.resize(n);
     u_morton_keys.resize(n);
@@ -102,9 +102,8 @@ int main(const int argc, const char** argv) {
   AppParams params(argc, argv);
   params.print_params();
 
-  spdlog::set_level(params.debug_print
-                      ? spdlog::level::debug
-                      : spdlog::level::info);
+  spdlog::set_level(params.debug_print ? spdlog::level::debug
+                                       : spdlog::level::info);
 
   // ------------------------------
   constexpr auto n_streams = 1;
