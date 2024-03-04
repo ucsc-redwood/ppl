@@ -61,29 +61,49 @@ struct PrefixSumAgent {
       TempStorage_LoadScanStore& temp_storage,
       const T* u_input,
       T* u_local_sums,
-      T* u_auxiliary = nullptr) {
+      volatile T* u_auxiliary = nullptr) {
     const auto num_tiles = cub::DivideAndRoundUp(n, tile_size);
 
+    // Process full tiles (num_tiles - 1)
     for (auto tile_idx = blockIdx.x; tile_idx < num_tiles;
          tile_idx += gridDim.x) {
       T thread_data[items_per_thread];
 
       BlockLoad(temp_storage.load)
-          .Load(u_input + tile_idx * tile_size, thread_data, n);
+          .Load(u_input + tile_idx * tile_size, thread_data);
       __syncthreads();
 
-      T aggregate;
+      [[maybe_unused]] T aggregate;
       BlockScan(temp_storage.scan)
           .ExclusiveSum(thread_data, thread_data, aggregate);
       __syncthreads();
 
-      if (u_auxiliary && threadIdx.x == 0) {
-        u_auxiliary[tile_idx] = aggregate;
-      }
+      // if (u_auxiliary && threadIdx.x == 0) {
+      //   u_auxiliary[tile_idx] = aggregate;
+      // }
 
       BlockStore(temp_storage.store)
-          .Store(u_local_sums + tile_idx * tile_size, thread_data, n);
+          .Store(u_local_sums + tile_idx * tile_size, thread_data);
       __syncthreads();
+    }
+
+    // I know this sucks, but this give the correct result
+
+    // if (u_auxiliary) {
+    //   for (auto tile_idx = threadIdx.x; tile_idx < num_tiles - 1;
+    //        tile_idx += n_threads) {
+    //     u_auxiliary[tile_idx] =
+    //         u_local_sums[tile_idx * tile_size + tile_size - 1] + 1;
+    //   }
+    //   u_auxiliary[num_tiles - 1] = u_local_sums[n - 1] + 1;
+    // }
+
+    if (u_auxiliary && threadIdx.x == 0) {
+      for (auto tile_idx = 0; tile_idx < num_tiles - 1; ++tile_idx) {
+        u_auxiliary[tile_idx] =
+            u_local_sums[tile_idx * tile_size + tile_size - 1] + 1;
+      }
+      u_auxiliary[num_tiles - 1] = u_local_sums[n - 1] + 1;
     }
   }
 

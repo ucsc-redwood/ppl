@@ -45,6 +45,10 @@ static void Test_LocalPrefixSum(const int n, const int n_blocks) {
   }
 
   for (auto i = 0; i < n_tiles - 1; ++i) {
+    std::cout << "=========== " << i << "\t" << u_auxiliary[i] << std::endl;
+  }
+
+  for (auto i = 0; i < n_tiles - 1; ++i) {
     // std::cout << "=========== " << i << "\t" << u_auxiliary[i] << std::endl;
     EXPECT_EQ(u_auxiliary[i], tile_size);
   }
@@ -63,8 +67,8 @@ TEST(LocalPrefixSum_Regular, Test_LocalPrefixSum) {
 
 TEST(LocalPrefixSum_Irregular, Test_LocalPrefixSum) {
   EXPECT_NO_FATAL_FAILURE(Test_LocalPrefixSum(114514, 1));
-  // EXPECT_NO_FATAL_FAILURE(Test_LocalPrefixSum(640 * 480, 2));
-  // EXPECT_NO_FATAL_FAILURE(Test_LocalPrefixSum(1920 * 1080, 4));
+  EXPECT_NO_FATAL_FAILURE(Test_LocalPrefixSum(640 * 480, 2));
+  EXPECT_NO_FATAL_FAILURE(Test_LocalPrefixSum(1920 * 1080, 4));
 }
 
 // -----------------------------------------------------------------------------
