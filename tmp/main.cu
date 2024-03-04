@@ -3,36 +3,48 @@
 
 #include <iostream>
 
+#include "cuda/agents/expr_cub_scan_agent.cuh"
 #include "cuda/helper.cuh"
+#include "cuda/unified_vector.cuh"
 
-__global__ void test_kernel(float* u_input, const int n) {
-  const auto idx = threadIdx.x + blockDim.x * blockIdx.x;
-  if (idx < n) {
-    u_input[idx] = 1.0f;
-  }
+template <typename ChainedPolicyT, typename ScanTileStateT>
+__global__ void Hey(const int* d_in,
+                    int* d_out,
+                    ScanTileStateT tile_state,
+                    int start_tile,
+                    int num_items) {
+  using ScanPolicyT = ChainedPolicyT::ActivePolicy::ScanPolicyT;
+  // typedef AgentScan<ScanPolicyT,
+  // InputIteratorT,
+  // OutputIteratorT,
+  // ScanOpT,
+  // RealInitValueT,
+  // OffsetT,
+  // AccumT>
+  using AgentScanT =
+      cub::AgentScan<ScanPolicyT, int, int, cub::Sum(), int, int, int>;
+
+  __shared__ typename AgentScanT::TempStorage temp_storage;
+
+  auto scan_op = cub::Sum();
+  auto real_init_value = 0;
+  AgentScanT(temp_storage, d_in, d_out, scan_op, real_init_value)
+      .ConsumeRange(num_items, tile_state, start_tile);
 }
 
 int main() {
-  const int n = 1000;
+  constexpr int n = 2048;
 
-  cudaStream_t stream;
-  CHECK_CUDA_CALL(cudaStreamCreate(&stream));
+  constexpr int n_threads = gpu::expr::ScanAgent<int>::n_threads;
+  constexpr int tile_size = gpu::expr::ScanAgent<int>::tile_size;
 
-  float* u_input;
-  CHECK_CUDA_CALL(cudaMallocManaged(&u_input, n * sizeof(float)));
+  using ScanTileStateT = cub::ScanTileState<int>;
 
-  CHECK_CUDA_CALL(
-      cudaStreamAttachMemAsync(stream, u_input, 0, cudaMemAttachSingle));
+  const cu::unified_vector<int> u_data(n, 1);
+  cu::unified_vector<int> u_output(n);
 
-  test_kernel<<<1, 256, 0, stream>>>(u_input, n);
-  SYNC_STREAM(stream);
+  Hey<<<1, n_threads>>>(u_data.data(), u_output.data(), n);
+  SYNC_DEVICE();
 
-  // peek 10 elements
-  for (int i = 0; i < 10; i++) {
-    std::cout << u_input[i] << std::endl;
-  }
-
-  CHECK_CUDA_CALL(cudaFree(u_input));
-  CHECK_CUDA_CALL(cudaStreamDestroy(stream));
   return 0;
 }
