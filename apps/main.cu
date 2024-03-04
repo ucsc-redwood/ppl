@@ -177,11 +177,6 @@ void run_all_in_cpu(NaivePipe* pipe, const AppParams& params) {
                        pipe->brt.u_parent.data(),
                        pipe->brt.u_left_child.data(),
                        pipe->n_brt_nodes);
-
-  // Peek at the first few octree nodes
-  for (int i = 0; i < 32; i++) {
-    spdlog::info("oct.u_cell_size[{}]: {}", i, pipe->oct.u_cell_size[i]);
-  }
 }
 
 int main(const int argc, const char** argv) {
