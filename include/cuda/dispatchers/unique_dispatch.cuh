@@ -10,18 +10,6 @@
 #include "prefix_sum_dispatch.cuh"
 
 namespace gpu {
-
-/**
- * @brief Remove duplicate elements from a sorted array. Need to supply a
- * 'flag_heads' array of size 'n' ints for temporary storage.
- *
- * @param grid_size
- * @param stream
- * @param u_keys
- * @param u_keys_out
- * @param u_flag_heads
- * @param n
- */
 inline void dispatch_Unique_easy(const int grid_size,
                                  const cudaStream_t stream,
                                  const unsigned int* u_keys,
@@ -48,6 +36,31 @@ inline void dispatch_Unique_easy(const int grid_size,
       u_keys, u_flag_heads, n, u_keys_out, nullptr);
 }
 
+/**
+ * @brief Remove duplicate elements from a sorted array. Need to supply a
+ * 'flag_heads' array of size 'n' ints for temporary storage.
+ *
+ * @param grid_size
+ * @param stream
+ * @param u_keys
+ * @param u_keys_out
+ * @param u_flag_heads
+ * @param n
+ * @param num_unique_out
+ */
+inline void dispatch_Unique_easy(const int grid_size,
+                                 const cudaStream_t stream,
+                                 const unsigned int* u_keys,
+                                 unsigned int* u_keys_out,
+                                 int* u_flag_heads,
+                                 const int n,
+                                 int& num_unique_out) {
+  dispatch_Unique_easy(grid_size, stream, u_keys, u_keys_out, u_flag_heads, n);
+  SYNC_STREAM(stream);
+
+  num_unique_out = u_flag_heads[n - 1] + 1;
+}
+
 [[deprecated("currently broken")]] inline void dispatch_Unique(
     const int grid_size,
     const cudaStream_t stream,
@@ -66,5 +79,4 @@ inline void dispatch_Unique_easy(const int grid_size,
   k_MoveDups<<<grid_size, n_threads, 0, stream>>>(
       u_keys, u_flag_heads, n, u_keys_out, nullptr);
 }
-
 }  // namespace gpu
