@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cuda_runtime_api.h>
-
 namespace gpu {
 
 __global__ void k_MakeOctNodes(
@@ -16,9 +14,9 @@ __global__ void k_MakeOctNodes(
     const unsigned int* codes,
     const uint8_t* rt_prefixN,
     const int* rt_parents,
-    const float min_coord,
-    const float range,
-    const int n_brt_nodes);
+    float min_coord,
+    float range,
+    int n_brt_nodes);
 
 __global__ void k_LinkLeafNodes(
     // --- new parameters
@@ -33,6 +31,6 @@ __global__ void k_LinkLeafNodes(
     const uint8_t* rt_prefixN,
     const int* rt_parents,
     const int* rt_leftChild,
-    const int n_brt_nodes);
+    int n_brt_nodes);
 
 }  // namespace gpu
