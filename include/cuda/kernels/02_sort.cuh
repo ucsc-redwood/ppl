@@ -4,6 +4,10 @@
 
 namespace gpu {
 
+// ============================================================================
+// Kernel entry points
+// ============================================================================
+
 __global__ void k_GlobalHistogram(unsigned int *sort,
                                   unsigned int *global_histogram,
                                   unsigned int size);

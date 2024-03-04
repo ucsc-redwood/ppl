@@ -4,6 +4,10 @@
 
 namespace gpu {
 
+// ============================================================================
+// Kernel entry points
+// ============================================================================
+
 __global__ void k_ComputeMortonCode(const glm::vec4* data,
                                     unsigned int* morton_keys,
                                     size_t n,

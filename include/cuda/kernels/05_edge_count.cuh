@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glm/glm.hpp>
+#include <cuda_runtime_api.h>
 
 namespace gpu {
 
@@ -8,7 +8,9 @@ namespace gpu {
 // Kernel entry points
 // ============================================================================
 
-__global__ void k_InitRandomVec4(
-    glm::vec4 *u_data, int n, float min, float range, int seed);
+__global__ void k_EdgeCount(const uint8_t* prefix_n,
+                            const int* parents,
+                            int* edge_count,
+                            int n_brt_nodes);
 
 }  // namespace gpu

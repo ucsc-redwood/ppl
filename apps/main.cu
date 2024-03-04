@@ -10,8 +10,11 @@
 #include "types/pipe.cuh"
 
 //
+#include "cuda/agents/prefix_sum_agent.cuh"
+#include "cuda/dispatchers/edge_count_dispatch.cuh"
 #include "cuda/dispatchers/init_dispatch.cuh"
 #include "cuda/dispatchers/morton_dispatch.cuh"
+#include "cuda/dispatchers/prefix_sum_dispatch.cuh"
 #include "cuda/dispatchers/radix_tree_dispatch.cuh"
 #include "cuda/dispatchers/sort_dispatch.cuh"
 #include "cuda/dispatchers/unique_dispatch.cuh"
@@ -45,6 +48,8 @@ struct NaivePipe {
   cu::unified_vector<glm::vec4> u_points;
   cu::unified_vector<unsigned int> u_morton_keys;
   cu::unified_vector<unsigned int> u_unique_morton_keys;
+  cu::unified_vector<int> u_edge_count;
+  cu::unified_vector<int> u_edge_offset;
 
   // should be of size 'n_unique_keys - 1', but we can allocate as 'n' for now
   struct {
@@ -68,6 +73,13 @@ struct NaivePipe {
   struct {
     cu::unified_vector<int> u_flag_heads;  // n
   } unique_tmp;
+
+  struct {
+    // constexpr auto tile_size = gpu::PrefixSumAgent<int>::tile_size;
+    // const auto n_tiles = cub::DivideAndRoundUp(n, tile_size);
+    // cu::unified_vector<int> u_auxiliary(n_tiles);
+    cu::unified_vector<int> u_auxiliary;  // n_tiles
+  } prefix_sum_tmp;
 
   explicit NaivePipe(const int n) : n_pts(n) {
     // Essential
@@ -96,6 +108,16 @@ struct NaivePipe {
     MallocManaged(&brt.u_has_leaf_right, n * sizeof(bool));
     brt.u_left_child.resize(n);
     brt.u_parent.resize(n);
+
+    // Edge count
+    u_edge_count.resize(n);
+    u_edge_offset.resize(n);
+
+    // Temporary storages for PrefixSum
+    constexpr auto prefix_sum_tile_size = gpu::PrefixSumAgent<int>::tile_size;
+    const auto prefix_sum_n_tiles =
+        cub::DivideAndRoundUp(n, prefix_sum_tile_size);
+    prefix_sum_tmp.u_auxiliary.resize(prefix_sum_n_tiles);
   }
 
   ~NaivePipe() {
@@ -123,6 +145,11 @@ struct NaivePipe {
     ATTACH_STREAM_SINGLE(brt.u_has_leaf_right);
     ATTACH_STREAM_SINGLE(brt.u_left_child.data());
     ATTACH_STREAM_SINGLE(brt.u_parent.data());
+
+    ATTACH_STREAM_SINGLE(u_edge_count.data());
+    ATTACH_STREAM_SINGLE(u_edge_offset.data());
+
+    ATTACH_STREAM_SINGLE(prefix_sum_tmp.u_auxiliary.data());
   }
 };
 
@@ -183,6 +210,7 @@ int main(const int argc, const char** argv) {
 
     spdlog::info("num_unique: {}/{}", num_unique, params.n);
     pipe->n_unique_keys = num_unique;
+    pipe->n_brt_nodes = num_unique - 1;
 
     gpu::dispatch_BuildRadixTree(params.n_blocks,
                                  streams[0],
@@ -192,7 +220,21 @@ int main(const int argc, const char** argv) {
                                  pipe->brt.u_has_leaf_right,
                                  pipe->brt.u_left_child.data(),
                                  pipe->brt.u_parent.data(),
-                                 num_unique);
+                                 pipe->n_unique_keys);
+
+    gpu::dispatch_EdgeCount(params.n_blocks,
+                            streams[0],
+                            pipe->brt.u_prefix_n.data(),
+                            pipe->brt.u_parent.data(),
+                            pipe->u_edge_count.data(),
+                            pipe->n_brt_nodes);
+
+    gpu::dispatch_PrefixSum(params.n_blocks,
+                            streams[0],
+                            pipe->u_edge_count.data(),
+                            pipe->u_edge_offset.data(),
+                            pipe->prefix_sum_tmp.u_auxiliary.data(),
+                            pipe->n_brt_nodes);
 
     SYNC_STREAM(streams[0]);
   }
@@ -211,6 +253,11 @@ int main(const int argc, const char** argv) {
         pipe->brt.u_has_leaf_right[i],
         pipe->brt.u_left_child[i],
         pipe->brt.u_parent[i]);
+  }
+
+  // peek 32 edge counts
+  for (int i = 0; i < 32; i++) {
+    spdlog::debug("Node {}: u_edge_offset: {}", i, pipe->u_edge_offset[i]);
   }
 
   spdlog::info("Done");

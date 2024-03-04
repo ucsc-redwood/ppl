@@ -4,6 +4,10 @@
 
 namespace gpu {
 
+// ============================================================================
+// Kernel entry points
+// ============================================================================
+
 __global__ void k_BuildRadixTree(int n_unique,
                                  const unsigned int* codes,
                                  uint8_t* prefix_n,
@@ -12,4 +16,4 @@ __global__ void k_BuildRadixTree(int n_unique,
                                  int* left_child,
                                  int* parent);
 
-}
+}  // namespace gpu
