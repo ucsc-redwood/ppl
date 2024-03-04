@@ -67,13 +67,13 @@ static void Test_RadixSort(const int n, const int grid_size) {
   CHECK_CUDA_CALL(cudaStreamDestroy(stream));
 }
 
-TEST(RadixSortRegular, Test_RadixSort) {
+TEST(RadixSort_Regular, Test_RadixSort) {
   EXPECT_NO_FATAL_FAILURE(Test_RadixSort(1 << 16, 1));   // 64K
   EXPECT_NO_FATAL_FAILURE(Test_RadixSort(1 << 18, 16));  // 256K
   EXPECT_NO_FATAL_FAILURE(Test_RadixSort(1 << 20, 64));  // 1M
 }
 
-TEST(RadixSortIrregular, Test_RadixSort) {
+TEST(RadixSort_Irregular, Test_RadixSort) {
   EXPECT_NO_FATAL_FAILURE(Test_RadixSort(114514, 1));
   EXPECT_NO_FATAL_FAILURE(Test_RadixSort(640 * 480, 8));
   EXPECT_NO_FATAL_FAILURE(Test_RadixSort(1920 * 1080, 16));

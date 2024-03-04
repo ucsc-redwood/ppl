@@ -49,13 +49,13 @@ static void Test_Unique(const int n, const int n_blocks) {
   CHECK_CUDA_CALL(cudaStreamDestroy(stream));
 }
 
-TEST(Test_UniqueRegular, Test_Unique) {
+TEST(Unique_Regular, Test_Unique) {
   EXPECT_NO_FATAL_FAILURE(Test_Unique(1 << 10, 1));  // 1024
   EXPECT_NO_FATAL_FAILURE(Test_Unique(1 << 16, 2));  // 65536
   EXPECT_NO_FATAL_FAILURE(Test_Unique(1 << 20, 4));  // 1048576
 }
 
-TEST(Test_UniqueIrregular, Test_Unique) {
+TEST(Unique_Irregular, Test_Unique) {
   EXPECT_NO_FATAL_FAILURE(Test_Unique(114514, 1));
   EXPECT_NO_FATAL_FAILURE(Test_Unique(640 * 480, 2));
   EXPECT_NO_FATAL_FAILURE(Test_Unique(1920 * 1080, 16));

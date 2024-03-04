@@ -62,14 +62,14 @@ struct PrefixSumAgent {
       const T* u_input,
       T* u_local_sums,
       T* u_auxiliary = nullptr) {
-    const auto num_tiles = (n + tile_size - 1) / tile_size;
+    const auto num_tiles = cub::DivideAndRoundUp(n, tile_size);
 
     for (auto tile_idx = blockIdx.x; tile_idx < num_tiles;
          tile_idx += gridDim.x) {
       T thread_data[items_per_thread];
 
       BlockLoad(temp_storage.load)
-          .Load(u_input + tile_idx * tile_size, thread_data);
+          .Load(u_input + tile_idx * tile_size, thread_data, n);
       __syncthreads();
 
       T aggregate;
@@ -82,7 +82,7 @@ struct PrefixSumAgent {
       }
 
       BlockStore(temp_storage.store)
-          .Store(u_local_sums + tile_idx * tile_size, thread_data);
+          .Store(u_local_sums + tile_idx * tile_size, thread_data, n);
       __syncthreads();
     }
   }
@@ -119,7 +119,7 @@ struct PrefixSumAgent {
       const T* u_local_sums,
       const T* u_auxiliary_summed,
       T* u_global_sums) {
-    const auto num_tiles = (n + tile_size - 1) / tile_size;
+    const auto num_tiles = cub::DivideAndRoundUp(n, tile_size);
 
     for (auto tile_idx = blockIdx.x; tile_idx < num_tiles;
          tile_idx += gridDim.x) {
