@@ -4,10 +4,6 @@
 
 namespace cpu {
 
-// ============================================================================
-// Kernel entry points
-// ============================================================================
-
 inline void std_sort(unsigned int *sort, unsigned int *alt, unsigned int size) {
   std::sort(sort, sort + size);
 }

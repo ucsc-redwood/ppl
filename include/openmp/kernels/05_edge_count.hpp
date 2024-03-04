@@ -1,10 +1,8 @@
 #pragma once
 
-namespace cpu {
+#include <cstdint>
 
-// ============================================================================
-// Kernel entry points
-// ============================================================================
+namespace cpu {
 
 void k_EdgeCount(const uint8_t* prefix_n,
                  const int* parents,

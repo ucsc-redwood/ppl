@@ -1,5 +1,3 @@
-#include <omp.h>
-
 #include <algorithm>
 #include <cassert>
 

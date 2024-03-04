@@ -4,10 +4,6 @@
 
 namespace cpu {
 
-// ============================================================================
-// Kernel entry points
-// ============================================================================
-
 [[nodiscard]] inline int std_unique(const unsigned int *u_keys,
                                     unsigned int *u_keys_out,
                                     const int n) {

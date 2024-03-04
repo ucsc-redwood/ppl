@@ -1,3 +1,4 @@
+#include <omp.h>
 #include <spdlog/spdlog.h>
 
 #include <array>
@@ -127,6 +128,7 @@ void run_all_in_cpu(NaivePipe* pipe, const AppParams& params) {
   auto num_unique = cpu::std_unique(
       pipe->u_morton_keys.data(), pipe->u_unique_morton_keys.data(), params.n);
   pipe->n_unique_keys = num_unique;
+  pipe->n_brt_nodes = num_unique - 1;
 
   spdlog::info("num_unique: {}/{}", num_unique, params.n);
 
@@ -138,9 +140,22 @@ void run_all_in_cpu(NaivePipe* pipe, const AppParams& params) {
                         pipe->brt.u_left_child.data(),
                         pipe->brt.u_parent.data());
 
-  //for (int i = 0; i < pipe->n_brt_nodes; ++i) {
-  //  spdlog::info("prefix_n[{}]: {}", i, pipe->brt.u_prefix_n[i]);
+  cpu::k_EdgeCount(pipe->brt.u_prefix_n.data(),
+                   pipe->brt.u_parent.data(),
+                   pipe->u_edge_count.data(),
+                   pipe->n_brt_nodes);
+
+  cpu::std_exclusive_scan(
+      pipe->u_edge_count.data(), pipe->u_edge_offset.data(), pipe->n_brt_nodes);
+  const auto n_oct_nodes = pipe->u_edge_offset[pipe->n_brt_nodes - 1];
+  pipe->n_oct_nodes = n_oct_nodes;
+
+  //for (int i = 0; i < 32; i++) {
+  //  spdlog::info("u_edge_offset[{}]: {}", i, pipe->u_edge_offset[i]);
   //}
+
+  spdlog::info(
+      "n_oct_nodes: {} ({}%)", n_oct_nodes, n_oct_nodes * 100.0f / params.n);
 }
 
 int main(const int argc, const char** argv) {
@@ -149,6 +164,12 @@ int main(const int argc, const char** argv) {
 
   spdlog::set_level(params.debug_print ? spdlog::level::debug
                                        : spdlog::level::info);
+
+  omp_set_num_threads(params.n_threads);
+  if (params.debug_print) {
+#pragma omp parallel
+    { spdlog::info("Hello from thread {}", omp_get_thread_num()); }
+  }
 
   // ------------------------------
   constexpr auto n_streams = 1;
