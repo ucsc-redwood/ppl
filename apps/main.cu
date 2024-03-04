@@ -12,6 +12,7 @@
 //
 #include "cuda/dispatchers/init_dispatch.cuh"
 #include "cuda/dispatchers/morton_dispatch.cuh"
+#include "cuda/dispatchers/radix_tree_dispatch.cuh"
 #include "cuda/dispatchers/sort_dispatch.cuh"
 #include "cuda/dispatchers/unique_dispatch.cuh"
 
@@ -44,6 +45,15 @@ struct NaivePipe {
   cu::unified_vector<glm::vec4> u_points;
   cu::unified_vector<unsigned int> u_morton_keys;
   cu::unified_vector<unsigned int> u_unique_morton_keys;
+
+  // should be of size 'n_unique_keys - 1', but we can allocate as 'n' for now
+  struct {
+    cu::unified_vector<uint8_t> u_prefix_n;
+    bool* u_has_leaf_left;  // you can't use vector of bools
+    bool* u_has_leaf_right;
+    cu::unified_vector<int> u_left_child;
+    cu::unified_vector<int> u_parent;
+  } brt;
 
   struct {
     cu::unified_vector<unsigned int> u_sort_alt;              // n
@@ -79,6 +89,18 @@ struct NaivePipe {
 
     // Temporary storages for Unique
     unique_tmp.u_flag_heads.resize(n);
+
+    // BRT
+    brt.u_prefix_n.resize(n);  // should be n_unique, but n will do for now
+    MallocManaged(&brt.u_has_leaf_left, n * sizeof(bool));
+    MallocManaged(&brt.u_has_leaf_right, n * sizeof(bool));
+    brt.u_left_child.resize(n);
+    brt.u_parent.resize(n);
+  }
+
+  ~NaivePipe() {
+    CUDA_FREE(brt.u_has_leaf_left);
+    CUDA_FREE(brt.u_has_leaf_right);
   }
 
   void attachStream(const cudaStream_t stream) {
@@ -95,6 +117,12 @@ struct NaivePipe {
     ATTACH_STREAM_SINGLE(sort_tmp.u_fourth_pass_histogram.data());
 
     ATTACH_STREAM_SINGLE(unique_tmp.u_flag_heads.data());
+
+    ATTACH_STREAM_SINGLE(brt.u_prefix_n.data());
+    ATTACH_STREAM_SINGLE(brt.u_has_leaf_left);
+    ATTACH_STREAM_SINGLE(brt.u_has_leaf_right);
+    ATTACH_STREAM_SINGLE(brt.u_left_child.data());
+    ATTACH_STREAM_SINGLE(brt.u_parent.data());
   }
 };
 
@@ -114,48 +142,76 @@ int main(const int argc, const char** argv) {
   }
 
   const auto pipe = std::make_unique<NaivePipe>(params.n);
+  {
+    gpu::dispatch_InitRandomVec4(params.n_blocks,
+                                 streams[0],
+                                 pipe->u_points.data(),
+                                 params.n,
+                                 params.min_coord,
+                                 params.getRange(),
+                                 params.seed);
 
-  gpu::dispatch_InitRandomVec4(params.n_blocks,
-                               streams[0],
-                               pipe->u_points.data(),
-                               params.n,
-                               params.min_coord,
-                               params.getRange(),
-                               params.seed);
+    gpu::dispatch_ComputeMorton(params.n_blocks,
+                                streams[0],
+                                pipe->u_points.data(),
+                                pipe->u_morton_keys.data(),
+                                params.n,
+                                params.min_coord,
+                                params.getRange());
 
-  gpu::dispatch_ComputeMorton(params.n_blocks,
-                              streams[0],
-                              pipe->u_points.data(),
-                              pipe->u_morton_keys.data(),
-                              params.n,
-                              params.min_coord,
-                              params.getRange());
-
-  gpu::dispatch_RadixSort(params.n_blocks,
-                          streams[0],
-                          pipe->u_morton_keys.data(),
-                          pipe->sort_tmp.u_sort_alt.data(),
-                          pipe->sort_tmp.u_global_histogram.data(),
-                          pipe->sort_tmp.u_index.data(),
-                          pipe->sort_tmp.u_first_pass_histogram.data(),
-                          pipe->sort_tmp.u_second_pass_histogram.data(),
-                          pipe->sort_tmp.u_third_pass_histogram.data(),
-                          pipe->sort_tmp.u_fourth_pass_histogram.data(),
-                          params.n);
-  int num_unique;
-  gpu::dispatch_Unique_easy(params.n_blocks,
+    gpu::dispatch_RadixSort(params.n_blocks,
                             streams[0],
                             pipe->u_morton_keys.data(),
-                            pipe->u_unique_morton_keys.data(),
-                            pipe->unique_tmp.u_flag_heads.data(),
-                            params.n,
-                            num_unique);
+                            pipe->sort_tmp.u_sort_alt.data(),
+                            pipe->sort_tmp.u_global_histogram.data(),
+                            pipe->sort_tmp.u_index.data(),
+                            pipe->sort_tmp.u_first_pass_histogram.data(),
+                            pipe->sort_tmp.u_second_pass_histogram.data(),
+                            pipe->sort_tmp.u_third_pass_histogram.data(),
+                            pipe->sort_tmp.u_fourth_pass_histogram.data(),
+                            params.n);
+    int num_unique;
+    gpu::dispatch_Unique_easy(params.n_blocks,
+                              streams[0],
+                              pipe->u_morton_keys.data(),
+                              pipe->u_unique_morton_keys.data(),
+                              pipe->unique_tmp.u_flag_heads.data(),
+                              params.n,
+                              num_unique);
 
-  SYNC_STREAM(streams[0]);
+    SYNC_STREAM(streams[0]);
 
-  std::cout << "num_unique: " << num_unique << "/" << params.n << '\n';
+    spdlog::info("num_unique: {}/{}", num_unique, params.n);
+    pipe->n_unique_keys = num_unique;
+
+    gpu::dispatch_BuildRadixTree(params.n_blocks,
+                                 streams[0],
+                                 pipe->u_unique_morton_keys.data(),
+                                 pipe->brt.u_prefix_n.data(),
+                                 pipe->brt.u_has_leaf_left,
+                                 pipe->brt.u_has_leaf_right,
+                                 pipe->brt.u_left_child.data(),
+                                 pipe->brt.u_parent.data(),
+                                 num_unique);
+
+    SYNC_STREAM(streams[0]);
+  }
 
   // ------------------------------
+  // peek 32 brt nodes
+  spdlog::trace("Peeking 32 BRT nodes...");
+
+  for (int i = 0; i < 32; i++) {
+    spdlog::trace(
+        "Node {}: prefix_n: {}, has_leaf_left: {}, has_leaf_right: {}, "
+        "left_child: {}, parent: {}",
+        i,
+        pipe->brt.u_prefix_n[i],
+        pipe->brt.u_has_leaf_left[i],
+        pipe->brt.u_has_leaf_right[i],
+        pipe->brt.u_left_child[i],
+        pipe->brt.u_parent[i]);
+  }
 
   spdlog::info("Done");
   for (const auto& stream : streams) {
