@@ -150,12 +150,38 @@ void run_all_in_cpu(NaivePipe* pipe, const AppParams& params) {
   const auto n_oct_nodes = pipe->u_edge_offset[pipe->n_brt_nodes - 1];
   pipe->n_oct_nodes = n_oct_nodes;
 
-  //for (int i = 0; i < 32; i++) {
-  //  spdlog::info("u_edge_offset[{}]: {}", i, pipe->u_edge_offset[i]);
-  //}
-
   spdlog::info(
       "n_oct_nodes: {} ({}%)", n_oct_nodes, n_oct_nodes * 100.0f / params.n);
+
+  cpu::k_MakeOctNodes(pipe->oct.u_children,
+                      pipe->oct.u_corner,
+                      pipe->oct.u_cell_size,
+                      pipe->oct.u_child_node_mask,
+                      pipe->u_edge_offset.data(),
+                      pipe->u_edge_count.data(),
+                      pipe->u_unique_morton_keys.data(),
+                      pipe->brt.u_prefix_n.data(),
+                      pipe->brt.u_parent.data(),
+                      params.min_coord,
+                      params.getRange(),
+                      pipe->n_brt_nodes);
+
+  cpu::k_LinkLeafNodes(pipe->oct.u_children,
+                       pipe->oct.u_child_leaf_mask,
+                       pipe->u_edge_offset.data(),
+                       pipe->u_edge_count.data(),
+                       pipe->u_unique_morton_keys.data(),
+                       pipe->brt.u_has_leaf_left,
+                       pipe->brt.u_has_leaf_right,
+                       pipe->brt.u_prefix_n.data(),
+                       pipe->brt.u_parent.data(),
+                       pipe->brt.u_left_child.data(),
+                       pipe->n_brt_nodes);
+
+  // Peek at the first few octree nodes
+  for (int i = 0; i < 32; i++) {
+    spdlog::info("oct.u_cell_size[{}]: {}", i, pipe->oct.u_cell_size[i]);
+  }
 }
 
 int main(const int argc, const char** argv) {
