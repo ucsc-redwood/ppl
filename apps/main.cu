@@ -50,7 +50,6 @@ void run_all_in_gpu(NaivePipe* pipe,
 
   SYNC_STREAM(stream);
 
-  spdlog::info("num_unique: {}/{}", num_unique, params.n);
   pipe->n_unique_keys = num_unique;
   pipe->n_brt_nodes = num_unique - 1;
 
@@ -82,9 +81,6 @@ void run_all_in_gpu(NaivePipe* pipe,
   const auto n_oct_nodes = pipe->u_edge_offset[pipe->n_brt_nodes - 1];
   pipe->n_oct_nodes = n_oct_nodes;
 
-  spdlog::info(
-      "n_oct_nodes: {} ({}%)", n_oct_nodes, n_oct_nodes * 100.0f / params.n);
-
   gpu::dispatch_BuildOctree(
       params.n_blocks,
       stream,
@@ -108,6 +104,14 @@ void run_all_in_gpu(NaivePipe* pipe,
       pipe->n_brt_nodes);
 
   SYNC_STREAM(stream);
+
+  spdlog::info("num_unique: {}/{} ({}%), n_oct_nodes: {}/{} ({}%)",
+               num_unique,
+               params.n,
+               num_unique * 100.0f / params.n,
+               n_oct_nodes,
+               params.n,
+               n_oct_nodes * 100.0f / params.n);
 }
 
 void run_all_in_cpu(NaivePipe* pipe, const AppParams& params) {
@@ -130,8 +134,6 @@ void run_all_in_cpu(NaivePipe* pipe, const AppParams& params) {
   pipe->n_unique_keys = num_unique;
   pipe->n_brt_nodes = num_unique - 1;
 
-  spdlog::info("num_unique: {}/{}", num_unique, params.n);
-
   cpu::k_BuildRadixTree(pipe->n_unique_keys,
                         pipe->u_unique_morton_keys.data(),
                         pipe->brt.u_prefix_n.data(),
@@ -149,9 +151,6 @@ void run_all_in_cpu(NaivePipe* pipe, const AppParams& params) {
       pipe->u_edge_count.data(), pipe->u_edge_offset.data(), pipe->n_brt_nodes);
   const auto n_oct_nodes = pipe->u_edge_offset[pipe->n_brt_nodes - 1];
   pipe->n_oct_nodes = n_oct_nodes;
-
-  spdlog::info(
-      "n_oct_nodes: {} ({}%)", n_oct_nodes, n_oct_nodes * 100.0f / params.n);
 
   cpu::k_MakeOctNodes(pipe->oct.u_children,
                       pipe->oct.u_corner,
@@ -177,23 +176,43 @@ void run_all_in_cpu(NaivePipe* pipe, const AppParams& params) {
                        pipe->brt.u_parent.data(),
                        pipe->brt.u_left_child.data(),
                        pipe->n_brt_nodes);
+
+  // finished
+  spdlog::info("num_unique: {}/{} ({}%), n_oct_nodes: {}/{} ({}%)",
+               num_unique,
+               params.n,
+               num_unique * 100.0f / params.n,
+               n_oct_nodes,
+               params.n,
+               n_oct_nodes * 100.0f / params.n);
 }
 
 int main(const int argc, const char** argv) {
   AppParams params(argc, argv);
   params.print_params();
 
-  spdlog::set_level(params.debug_print ? spdlog::level::debug
-                                       : spdlog::level::info);
+  switch (params.log_level) {
+    case 0:
+      spdlog::set_level(spdlog::level::off);
+      break;
+    case 1:
+      spdlog::set_level(spdlog::level::info);
+      break;
+    case 2:
+      spdlog::set_level(spdlog::level::debug);
+      break;
+    default:
+      spdlog::set_level(spdlog::level::info);
+      break;
+  }
 
   omp_set_num_threads(params.n_threads);
-  if (params.debug_print) {
 #pragma omp parallel
-    { spdlog::info("Hello from thread {}", omp_get_thread_num()); }
-  }
+  { spdlog::debug("Hello from thread {}", omp_get_thread_num()); }
 
   // ------------------------------
   constexpr auto n_streams = 2;
+  constexpr auto n_iteration = 256;
 
   std::array<cudaStream_t, n_streams> streams;
   for (auto& stream : streams) {
@@ -203,11 +222,27 @@ int main(const int argc, const char** argv) {
   const auto pipe = std::make_unique<NaivePipe>(params.n);
   pipe->attachStream(streams[0]);
 
-  if (params.use_cpu) {
-    run_all_in_cpu(pipe.get(), params);
-  } else {
-    run_all_in_gpu(pipe.get(), params, streams[0]);
+  // initilize a timer
+  auto start = std::chrono::high_resolution_clock::now();
+
+  for (auto i = 0; i < n_iteration; ++i) {
+    spdlog::info("Starting Iteration: {}", i);
+    ++params.seed;
+    if (params.use_cpu) {
+      run_all_in_cpu(pipe.get(), params);
+    } else {
+      run_all_in_gpu(pipe.get(), params, streams[0]);
+    }
   }
+
+  SYNC_DEVICE();
+  auto end = std::chrono::high_resolution_clock::now();
+
+  spdlog::info(
+      "Elapsed time: {} ms",
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+              .count() /
+          n_iteration);
 
   // ------------------------------
 

@@ -29,7 +29,7 @@ uint8_t delta_u32(const unsigned int a, const unsigned int b) {
 int log2_ceil_u32(const unsigned int x) {
   // Counting from LSB to MSB, number of bits before last '1'
   // This is floor(log(x))
-  const auto n_lower_bits = (8 * sizeof(x)) - CLZ(x) - 1;
+  const auto n_lower_bits = ((8 * sizeof(x)) - CLZ(x) - 1);
 
   // Add 1 if 2^n_lower_bits is less than x
   //     (i.e. we rounded down because x was not a power of 2)

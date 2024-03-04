@@ -15,7 +15,10 @@ AppParams::AppParams(const int argc, const char **argv) {
   app.add_option("-b,--blocks", n_blocks, "Number of GPU blocks")
       ->check(CLI::Range(1, 128));
 
-  app.add_flag("-d,--debug", debug_print, "Print debug information");
+  // app.add_flag("-d,--debug", debug_print, "Print debug information");
+
+  app.add_option("-l,--log-level", log_level, "Log level")
+      ->check(CLI::Range(0, 3));
 
   app.add_flag("-x", use_cpu, "Use CPU");
 
