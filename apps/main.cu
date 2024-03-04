@@ -70,12 +70,12 @@ void run_all_in_gpu(NaivePipe* pipe,
                           pipe->u_edge_count.data(),
                           pipe->n_brt_nodes);
 
-  gpu::dispatch_PrefixSum(params.n_blocks,
-                          stream,
-                          pipe->u_edge_count.data(),
-                          pipe->u_edge_offset.data(),
-                          pipe->prefix_sum_tmp.u_auxiliary.data(),
-                          pipe->n_brt_nodes);
+  gpu::dispatch_PrefixSum_safe(params.n_blocks,
+                               stream,
+                               pipe->u_edge_count.data(),
+                               pipe->u_edge_offset.data(),
+                               pipe->n_brt_nodes);
+
   SYNC_STREAM(stream);
 
   const auto n_oct_nodes = pipe->u_edge_offset[pipe->n_brt_nodes - 1];

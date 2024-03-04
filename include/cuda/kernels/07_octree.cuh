@@ -33,4 +33,22 @@ __global__ void k_LinkLeafNodes(
     const int* rt_leftChild,
     int n_brt_nodes);
 
+namespace debug {
+__global__ void k_MakeOctNodes(
+    // --- new parameters
+    int (*u_children)[8],
+    glm::vec4* u_corner,
+    float* u_cell_size,
+    int* u_child_node_mask,
+    // --- end new parameters
+    const int* node_offsets,    // prefix sum
+    const int* rt_node_counts,  // edge count
+    const unsigned int* codes,
+    const uint8_t* rt_prefixN,
+    const int* rt_parents,
+    float min_coord,
+    float range,
+    int n_brt_nodes);
+}
+
 }  // namespace gpu

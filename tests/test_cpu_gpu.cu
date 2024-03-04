@@ -238,18 +238,18 @@ static void Test_PrefixSum(const int n, const int n_gpu_blocks) {
   cu::unified_vector<int> cpu_output(n);
   cu::unified_vector<int> gpu_output(n);
 
-  constexpr auto tile_size = gpu::PrefixSumAgent<int>::tile_size;
-  const auto n_tiles = cub::DivideAndRoundUp(n, tile_size);
-  cu::unified_vector<int> u_auxiliary(n_tiles);
+  // constexpr auto tile_size = gpu::PrefixSumAgent<int>::tile_size;
+  // const auto n_tiles = cub::DivideAndRoundUp(n, tile_size);
+  // cu::unified_vector<int> u_auxiliary(n_tiles);
 
   // ------
 
-  gpu::dispatch_PrefixSum(n_gpu_blocks,
-                          stream,
-                          u_data.data(),
-                          gpu_output.data(),
-                          u_auxiliary.data(),
-                          n);
+  gpu::dispatch_PrefixSum_safe(n_gpu_blocks,
+                               stream,
+                               u_data.data(),
+                               gpu_output.data(),
+                               // u_auxiliary.data(),
+                               n);
   SYNC_DEVICE();
 
   cpu::std_exclusive_scan(u_data.data(), cpu_output.data(), n);
@@ -366,6 +366,20 @@ static void Test_MakeOctreeNodes(const int n, const int n_gpu_blocks) {
                             0,
                             n,
                             n_brt_nodes);
+
+  // gpu::debug::k_MakeOctNodes<<<1, 1, 0, stream>>>(
+  //     gpu_oct.u_children,  // ----------------------------
+  //     gpu_oct.u_corner,
+  //     gpu_oct.u_cell_size,
+  //     gpu_oct.u_child_node_mask,
+  //     u_edge_offset.data(),
+  //     u_edge_count.data(),
+  //     u_unique_morton_keys.data(),
+  //     input_brt.u_prefix_n.data(),
+  //     input_brt.u_parent.data(),
+  //     0,
+  //     n,
+  //     n_brt_nodes);
   SYNC_DEVICE();
 
   cpu::k_MakeOctNodes(cpu_oct.u_children,
@@ -382,6 +396,28 @@ static void Test_MakeOctreeNodes(const int n, const int n_gpu_blocks) {
                       n_brt_nodes);
 
   // ------
+
+  // for (auto i = 0; i < n_brt_nodes; ++i) {
+  //   std::cout << "Node " << i << ":\n";
+  //   // for (auto j = 0; j < 8; ++j) {
+
+  //   // }
+
+  //   if (std::all_of(gpu_oct.u_children[i],
+  //                   gpu_oct.u_children[i] + 8,
+  //                   [](const auto x) { return x == 0; })) {
+  //     continue;
+  //   }
+
+  //   for (auto j = 0; j < 8; ++j) {
+  //     std::cout << "  " << gpu_oct.u_children[i][j] << " vs. \t"
+  //               << cpu_oct.u_children[i][j]
+  //               << (gpu_oct.u_children[i][j] == cpu_oct.u_children[i][j]
+  //                       ? ""
+  //                       : "<------ ERR")
+  //               << "\n";
+  //   }
+  // }
 
   auto is_equal = std::equal(gpu_oct.u_children[0],
                              gpu_oct.u_children[0] + n_brt_nodes * 8,

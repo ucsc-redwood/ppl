@@ -7,6 +7,23 @@
 
 namespace gpu {
 
+template <typename T>
+void dispatch_PrefixSum_safe(const T _,
+                             const cudaStream_t stream,
+                             const T* u_data,
+                             T* u_global_sums,
+                             const int n) {
+  constexpr auto n_threads = PrefixSumAgent<T>::n_threads;
+
+  spdlog::debug(
+      "Dispatching k_SingleBlockExclusiveScan with (1 blocks, {} "
+      "threads)",
+      n_threads);
+
+  k_SingleBlockExclusiveScan<<<1, n_threads, 0, stream>>>(
+      u_data, u_global_sums, n);
+}
+
 /** @brief Dispatches the prefix sum computation. However, you need to allocate
  * a temporary memory for the auxiliary data. The size of the auxiliary memory
  * should be the size of a tile (# of threads X # of items per thread).
