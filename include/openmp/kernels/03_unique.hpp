@@ -8,18 +8,12 @@ namespace cpu {
 // Kernel entry points
 // ============================================================================
 
-[[nodiscard, deprecated]] inline int std_unique(const unsigned int *u_keys,
-                                                int n) {
-  const auto it = std::unique(u_keys, u_keys + n);
-  return std::distance(u_keys, it);
-}
-
 [[nodiscard]] inline int std_unique(const unsigned int *u_keys,
-                                    const unsigned int *u_keys_out,
-                                    int n) {
-  const auto it = std::unique(u_keys, u_keys + n);
-  std::copy(u_keys, it, u_keys_out);
-  return std::distance(u_keys, it);
+                                    unsigned int *u_keys_out,
+                                    const int n) {
+  std::copy_n(u_keys, n, u_keys_out);
+  const auto it = std::unique(u_keys_out, u_keys_out + n);
+  return static_cast<int>(std::distance(u_keys_out, it));
 }
 
 // /**

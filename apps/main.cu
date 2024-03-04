@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "app_params.hpp"
-#include "gpu_kernels.cuh"
+#include "kernels_fwd.h"
 #include "naive_pipe.cuh"
 
 void run_all_in_gpu(NaivePipe* pipe,
@@ -109,6 +109,40 @@ void run_all_in_gpu(NaivePipe* pipe,
   SYNC_STREAM(stream);
 }
 
+void run_all_in_cpu(NaivePipe* pipe, const AppParams& params) {
+  cpu::k_InitRandomVec4(pipe->u_points.data(),
+                        params.n,
+                        params.min_coord,
+                        params.getRange(),
+                        params.seed);
+
+  cpu::k_ComputeMortonCode(pipe->u_points.data(),
+                           pipe->u_morton_keys.data(),
+                           params.n,
+                           params.min_coord,
+                           params.getRange());
+
+  cpu::std_sort(pipe->u_morton_keys.data(), params.n);
+
+  auto num_unique = cpu::std_unique(
+      pipe->u_morton_keys.data(), pipe->u_unique_morton_keys.data(), params.n);
+  pipe->n_unique_keys = num_unique;
+
+  spdlog::info("num_unique: {}/{}", num_unique, params.n);
+
+  cpu::k_BuildRadixTree(pipe->n_unique_keys,
+                        pipe->u_unique_morton_keys.data(),
+                        pipe->brt.u_prefix_n.data(),
+                        pipe->brt.u_has_leaf_left,
+                        pipe->brt.u_has_leaf_right,
+                        pipe->brt.u_left_child.data(),
+                        pipe->brt.u_parent.data());
+
+  //for (int i = 0; i < pipe->n_brt_nodes; ++i) {
+  //  spdlog::info("prefix_n[{}]: {}", i, pipe->brt.u_prefix_n[i]);
+  //}
+}
+
 int main(const int argc, const char** argv) {
   AppParams params(argc, argv);
   params.print_params();
@@ -127,7 +161,8 @@ int main(const int argc, const char** argv) {
   const auto pipe = std::make_unique<NaivePipe>(params.n);
   pipe->attachStream(streams[0]);
 
-  run_all_in_gpu(pipe.get(), params, streams[0]);
+  // run_all_in_gpu(pipe.get(), params, streams[0]);
+  run_all_in_cpu(pipe.get(), params);
 
   // ------------------------------
 

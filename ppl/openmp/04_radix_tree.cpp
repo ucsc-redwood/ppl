@@ -37,7 +37,7 @@ int log2_ceil_u32(const unsigned int x) {
   return n_lower_bits + ((1 << n_lower_bits) < x);
 }
 
-void k_BuildRadixTree(int n_unique,
+void k_BuildRadixTree(const int n_unique,
                       const unsigned int* codes,
                       uint8_t* prefix_n,
                       bool* has_leaf_left,
