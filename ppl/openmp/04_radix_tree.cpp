@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 
 #if defined(__GNUC__) || defined(__clang__)
 #define CLZ(x) __builtin_clz(x)
@@ -70,7 +71,8 @@ void k_BuildRadixTree(const int n_unique,
       auto l_max = 2;
       // Cast to ptrdiff_t so in case the result is negative (since d is +/- 1),
       // we can catch it and not index out of bounds
-      while (i + static_cast<ptrdiff_t>(l_max) * d >= 0 && i + l_max * d <= n &&
+      while (i + static_cast<std::ptrdiff_t>(l_max) * d >= 0 &&
+             i + l_max * d <= n &&
              delta_u32(code_i, codes[i + l_max * d]) > delta_min) {
         l_max *= 2;
       }

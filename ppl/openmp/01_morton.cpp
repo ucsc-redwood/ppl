@@ -6,7 +6,7 @@ namespace cpu {
 
 void k_ComputeMortonCode(const glm::vec4* data,
                          unsigned int* morton_keys,
-                         const size_t n,
+                         const int n,
                          const float min_coord,
                          const float range) {
 #pragma omp parallel for
