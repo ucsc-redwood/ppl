@@ -1,5 +1,7 @@
 #include <device_launch_parameters.h>
 
+#include <cstdint>
+
 // ----------------------------------------------------------------------------
 // Radix tree construction
 // This kernel can not be shared with the CPU, because it uses __clz
