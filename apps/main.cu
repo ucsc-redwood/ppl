@@ -208,8 +208,8 @@ int main(const int argc, const char** argv) {
   const auto pipe = std::make_unique<NaivePipe>(params.n);
   pipe->attachStream(streams[0]);
 
-  // run_all_in_gpu(pipe.get(), params, streams[0]);
-  run_all_in_cpu(pipe.get(), params);
+  run_all_in_gpu(pipe.get(), params, streams[0]);
+  // run_all_in_cpu(pipe.get(), params);
 
   // ------------------------------
 

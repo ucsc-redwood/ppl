@@ -28,6 +28,7 @@ __global__ void k_MakeOctNodes(int (*u_children)[8],
                             range);
     u_cell_size[0] = range;
   }
+
   __syncthreads();
 
   const auto N = n_brt_nodes;

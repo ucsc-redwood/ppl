@@ -16,6 +16,16 @@ void k_MakeOctNodes(int (*u_children)[8],
                     const float min_coord,
                     const float range,
                     const int n_brt_nodes) {
+  // Computing the first node
+  const auto root_level = rt_prefixN[0] / 3;
+  const auto root_prefix = codes[0] >> (morton_bits - (3 * root_level));
+
+  glm::vec4 ret;
+  shared::morton32_to_xyz(
+      &ret, root_prefix << (morton_bits - (3 * root_level)), min_coord, range);
+  u_corner[0] = ret;
+  u_cell_size[0] = range;
+
   // Skipping the first node
 #pragma omp parallel for
   for (auto i = 1; i < n_brt_nodes; i++) {
@@ -62,5 +72,4 @@ void k_LinkLeafNodes(int (*u_children)[8],
                                 rt_leftChild);
   }
 }
-
 }  // namespace cpu
