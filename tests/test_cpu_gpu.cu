@@ -41,7 +41,7 @@ static void Test_ComputeMorton(const int n, const int n_gpu_blocks) {
   DESCROY_STREAM;
 }
 
-TEST(ComputeMorton_Regular, Test_ComputeMorton) {
+TEST(Test_ComputeMorton, RegularInput) {
   EXPECT_NO_FATAL_FAILURE(Test_ComputeMorton(1 << 12, 1));  // 1 << 12 = 4096
   EXPECT_NO_FATAL_FAILURE(Test_ComputeMorton(1 << 14, 2));
   EXPECT_NO_FATAL_FAILURE(Test_ComputeMorton(1 << 16, 4));
@@ -49,7 +49,7 @@ TEST(ComputeMorton_Regular, Test_ComputeMorton) {
   EXPECT_NO_FATAL_FAILURE(Test_ComputeMorton(1 << 20, 16));
 }
 
-TEST(ComputeMorton_Irregular, Test_ComputeMorton) {
+TEST(Test_ComputeMorton, IrregularInput) {
   EXPECT_NO_FATAL_FAILURE(Test_ComputeMorton(114514, 1));
   EXPECT_NO_FATAL_FAILURE(Test_ComputeMorton(640 * 480, 4));
   EXPECT_NO_FATAL_FAILURE(Test_ComputeMorton(1920 * 1080, 16));
@@ -148,7 +148,7 @@ static void Test_RadixTree(const int n, const int n_gpu_blocks) {
   DESCROY_STREAM;
 }
 
-TEST(BuildRadixTree_Regular, Test_RadixTree) {
+TEST(Test_RadixTree, RegularInput) {
   EXPECT_NO_FATAL_FAILURE(Test_RadixTree(1 << 12, 1));  // 1 << 12 = 4096
   EXPECT_NO_FATAL_FAILURE(Test_RadixTree(1 << 14, 2));
   EXPECT_NO_FATAL_FAILURE(Test_RadixTree(1 << 16, 4));
@@ -156,7 +156,7 @@ TEST(BuildRadixTree_Regular, Test_RadixTree) {
   EXPECT_NO_FATAL_FAILURE(Test_RadixTree(1 << 20, 16));
 }
 
-TEST(BuildRadixTree_Irregular, Test_RadixTree) {
+TEST(Test_RadixTree, IrregularInput) {
   EXPECT_NO_FATAL_FAILURE(Test_RadixTree(114514, 1));
   EXPECT_NO_FATAL_FAILURE(Test_RadixTree(640 * 480, 4));
   EXPECT_NO_FATAL_FAILURE(Test_RadixTree(1920 * 1080, 16));
@@ -211,7 +211,7 @@ static void Test_EdgeCount(const int n, const int n_gpu_blocks) {
   DESCROY_STREAM;
 }
 
-TEST(EdgeCount_Regular, Test_EdgeCount) {
+TEST(Test_EdgeCount, RegularInput) {
   EXPECT_NO_FATAL_FAILURE(Test_EdgeCount(1 << 12, 1));  // 1 << 12 = 4096
   EXPECT_NO_FATAL_FAILURE(Test_EdgeCount(1 << 14, 2));
   EXPECT_NO_FATAL_FAILURE(Test_EdgeCount(1 << 16, 4));
@@ -219,7 +219,7 @@ TEST(EdgeCount_Regular, Test_EdgeCount) {
   EXPECT_NO_FATAL_FAILURE(Test_EdgeCount(1 << 20, 16));
 }
 
-TEST(EdgeCount_Irregular, Test_EdgeCount) {
+TEST(Test_EdgeCount, IrregularInput) {
   EXPECT_NO_FATAL_FAILURE(Test_EdgeCount(114514, 1));
   EXPECT_NO_FATAL_FAILURE(Test_EdgeCount(640 * 480, 4));
   EXPECT_NO_FATAL_FAILURE(Test_EdgeCount(1920 * 1080, 16));
@@ -263,7 +263,7 @@ static void Test_PrefixSum(const int n, const int n_gpu_blocks) {
   DESCROY_STREAM;
 }
 
-TEST(PrefixSum_Regular, Test_PrefixSum) {
+TEST(Test_PrefixSum, RegularInput) {
   EXPECT_NO_FATAL_FAILURE(Test_PrefixSum(1 << 12, 1));  // 1 << 12 = 4096
   EXPECT_NO_FATAL_FAILURE(Test_PrefixSum(1 << 14, 2));
   EXPECT_NO_FATAL_FAILURE(Test_PrefixSum(1 << 16, 4));
@@ -271,7 +271,7 @@ TEST(PrefixSum_Regular, Test_PrefixSum) {
   EXPECT_NO_FATAL_FAILURE(Test_PrefixSum(1 << 20, 16));
 }
 
-TEST(PrefixSum_Irregular, Test_PrefixSum) {
+TEST(Test_PrefixSum, IrregularInput) {
   EXPECT_NO_FATAL_FAILURE(Test_PrefixSum(114514, 1));
   EXPECT_NO_FATAL_FAILURE(Test_PrefixSum(640 * 480, 4));
   EXPECT_NO_FATAL_FAILURE(Test_PrefixSum(1920 * 1080, 16));

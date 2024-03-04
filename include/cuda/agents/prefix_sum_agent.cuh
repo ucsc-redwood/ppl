@@ -146,7 +146,7 @@ struct PrefixSumAgent {
       T thread_data[items_per_thread];
 
       BlockLoad(temp_storage.load)
-          .Load(u_local_sums + tile_idx * tile_size, thread_data);
+          .Load(u_local_sums + tile_idx * tile_size, thread_data, n);
       __syncthreads();
 
 #pragma unroll
