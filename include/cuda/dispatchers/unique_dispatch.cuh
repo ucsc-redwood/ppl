@@ -10,6 +10,7 @@
 #include "prefix_sum_dispatch.cuh"
 
 namespace gpu {
+    
 inline void dispatch_Unique_easy(const int grid_size,
                                  const cudaStream_t stream,
                                  const unsigned int* u_keys,
