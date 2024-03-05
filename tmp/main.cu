@@ -74,12 +74,6 @@ struct OneSweepHandler {
   [[nodiscard]] const unsigned int* end() const { return u_sort + n; }
   [[nodiscard]] unsigned int* end() { return u_sort + n; }
 
-  // write operator []
-  [[nodiscard]] const unsigned int& operator[](const size_t i) const {
-    return u_sort[i];
-  }
-  [[nodiscard]] unsigned int& operator[](const size_t i) { return u_sort[i]; }
-
   [[nodiscard]] const unsigned int* getSort() const { return u_sort; }
   [[nodiscard]] unsigned int* getSort() { return u_sort; }
 
@@ -113,6 +107,23 @@ struct OneSweepHandler {
               << "%) Temporary: " << temp / 1024.0 / 1024.0 << " MB ("
               << (temp / (essential + temp)) * 100.0 << "%)" << std::endl;
   }
+
+  void clearMem() {
+    // CHECK_CUDA_CALL(cudaMemset(u_sort, 0, n));
+    // CHECK_CUDA_CALL(cudaMemset(im_storage.u_sort_alt, 0, n));
+    CHECK_CUDA_CALL(
+        cudaMemset(im_storage.u_global_histogram, 0, RADIX * RADIX_PASSES));
+    CHECK_CUDA_CALL(cudaMemset(im_storage.u_index, 0, RADIX_PASSES));
+    const auto num_parts = cub::DivideAndRoundUp(n, BIN_PART_SIZE);
+    CHECK_CUDA_CALL(
+        cudaMemset(im_storage.u_first_pass_histogram, 0, RADIX * num_parts));
+    CHECK_CUDA_CALL(
+        cudaMemset(im_storage.u_second_pass_histogram, 0, RADIX * num_parts));
+    CHECK_CUDA_CALL(
+        cudaMemset(im_storage.u_third_pass_histogram, 0, RADIX * num_parts));
+    CHECK_CUDA_CALL(
+        cudaMemset(im_storage.u_fourth_pass_histogram, 0, RADIX * num_parts));
+  }
 };
 
 int main(const int argc, const char* const argv[]) {
@@ -134,74 +145,86 @@ int main(const int argc, const char* const argv[]) {
   handler->attachStream(stream);
   handler->memoryUsage();
 
-  // input
-  std::generate(
-      handler->begin(), handler->end(), [i = n]() mutable { return --i; });
+  const auto n_iterations = 2;
 
-  auto is_sorted = std::is_sorted(handler->begin(), handler->end());
-  std::cout << "Is sorted (after): " << std::boolalpha << is_sorted
-            << std::endl;
+  for (auto i = 0; i < n_iterations; ++i) {
+    // input
+    std::generate(
+        handler->begin(), handler->end(), [i = n]() mutable { return --i; });
 
-  gpu::k_GlobalHistogram<<<grid_size,
-                           OneSweepHandler::GLOBAL_HIST_THREADS,
-                           0,
-                           stream>>>(
-      handler->u_sort, handler->im_storage.u_global_histogram, n);
+    auto is_sorted = std::is_sorted(handler->begin(), handler->end());
+    std::cout << "Is sorted (after): " << std::boolalpha << is_sorted
+              << std::endl;
 
-  gpu::k_Scan<<<OneSweepHandler::RADIX_PASSES,
-                OneSweepHandler::RADIX,
-                0,
-                stream>>>(handler->im_storage.u_global_histogram,
-                          handler->im_storage.u_first_pass_histogram,
-                          handler->im_storage.u_second_pass_histogram,
-                          handler->im_storage.u_third_pass_histogram,
-                          handler->im_storage.u_fourth_pass_histogram);
+    // ------------------------------
+    handler->clearMem();
+    // SYNC_STREAM(stream);
+    SYNC_DEVICE();
 
-  gpu::k_DigitBinningPass<<<grid_size,
-                            OneSweepHandler::BINNING_THREADS,
-                            0,
-                            stream>>>(
-      handler->u_sort,  // <---
-      handler->im_storage.u_sort_alt,
-      handler->im_storage.u_first_pass_histogram,
-      handler->im_storage.u_index,
-      n,
-      0);
-  gpu::k_DigitBinningPass<<<grid_size,
-                            OneSweepHandler::BINNING_THREADS,
-                            0,
-                            stream>>>(
-      handler->im_storage.u_sort_alt,
-      handler->u_sort,  // <---
-      handler->im_storage.u_second_pass_histogram,
-      handler->im_storage.u_index,
-      n,
-      8);
-  gpu::k_DigitBinningPass<<<grid_size,
-                            OneSweepHandler::BINNING_THREADS,
-                            0,
-                            stream>>>(
-      handler->u_sort,  // <---
-      handler->im_storage.u_sort_alt,
-      handler->im_storage.u_third_pass_histogram,
-      handler->im_storage.u_index,
-      n,
-      16);
-  gpu::k_DigitBinningPass<<<grid_size,
-                            OneSweepHandler::BINNING_THREADS,
-                            0,
-                            stream>>>(
-      handler->im_storage.u_sort_alt,
-      handler->u_sort,  // <---
-      handler->im_storage.u_fourth_pass_histogram,
-      handler->im_storage.u_index,
-      n,
-      24);
-  SYNC_STREAM(stream);
+    gpu::k_GlobalHistogram<<<grid_size,
+                             OneSweepHandler::GLOBAL_HIST_THREADS,
+                             0,
+                             stream>>>(
+        handler->u_sort, handler->im_storage.u_global_histogram, n);
 
-  is_sorted = std::is_sorted(handler->begin(), handler->end());
-  std::cout << "Is sorted (after): " << std::boolalpha << is_sorted
-            << std::endl;
+    gpu::k_Scan<<<OneSweepHandler::RADIX_PASSES,
+                  OneSweepHandler::RADIX,
+                  0,
+                  stream>>>(handler->im_storage.u_global_histogram,
+                            handler->im_storage.u_first_pass_histogram,
+                            handler->im_storage.u_second_pass_histogram,
+                            handler->im_storage.u_third_pass_histogram,
+                            handler->im_storage.u_fourth_pass_histogram);
+
+    gpu::k_DigitBinningPass<<<grid_size,
+                              OneSweepHandler::BINNING_THREADS,
+                              0,
+                              stream>>>(
+        handler->u_sort,  // <---
+        handler->im_storage.u_sort_alt,
+        handler->im_storage.u_first_pass_histogram,
+        handler->im_storage.u_index,
+        n,
+        0);
+    gpu::k_DigitBinningPass<<<grid_size,
+                              OneSweepHandler::BINNING_THREADS,
+                              0,
+                              stream>>>(
+        handler->im_storage.u_sort_alt,
+        handler->u_sort,  // <---
+        handler->im_storage.u_second_pass_histogram,
+        handler->im_storage.u_index,
+        n,
+        8);
+    gpu::k_DigitBinningPass<<<grid_size,
+                              OneSweepHandler::BINNING_THREADS,
+                              0,
+                              stream>>>(
+        handler->u_sort,  // <---
+        handler->im_storage.u_sort_alt,
+        handler->im_storage.u_third_pass_histogram,
+        handler->im_storage.u_index,
+        n,
+        16);
+    gpu::k_DigitBinningPass<<<grid_size,
+                              OneSweepHandler::BINNING_THREADS,
+                              0,
+                              stream>>>(
+        handler->im_storage.u_sort_alt,
+        handler->u_sort,  // <---
+        handler->im_storage.u_fourth_pass_histogram,
+        handler->im_storage.u_index,
+        n,
+        24);
+
+    // SYNC_STREAM(stream);
+    SYNC_DEVICE();
+    // ------------------------------
+
+    is_sorted = std::is_sorted(handler->begin(), handler->end());
+    std::cout << "Is sorted (after): " << std::boolalpha << is_sorted
+              << std::endl;
+  }
 
   CHECK_CUDA_CALL(cudaStreamDestroy(stream));
   return 0;
