@@ -27,6 +27,8 @@ inline void MallocDevice<void>(void **ptr, const size_t num_items) {
   CHECK_CUDA_CALL(cudaMalloc(ptr, num_items));
 }
 
+#define MALLOC_MANAGED(ptr, num_items) MallocManaged(ptr, num_items)
+
 #define CUDA_FREE(ptr) CHECK_CUDA_CALL(cudaFree(ptr))
 
 #define ATTACH_STREAM_SINGLE(ptr) \
@@ -41,3 +43,5 @@ template <typename T, typename Alloc>
     const std::vector<T, Alloc> &vec) {
   return sizeof(T) * vec.size();
 }
+
+#define CALC_MEM(ptr, n) (sizeof(std::remove_pointer_t<decltype(ptr)>) * n)
