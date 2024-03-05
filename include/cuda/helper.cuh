@@ -45,3 +45,7 @@ template <typename T, typename Alloc>
 }
 
 #define CALC_MEM(ptr, n) (sizeof(std::remove_pointer_t<decltype(ptr)>) * n)
+
+#define SET_MEM_2_ZERO(ptr, item_count) \
+  CHECK_CUDA_CALL(cudaMemset(           \
+      ptr, 0, sizeof(std::remove_pointer_t<decltype(ptr)>) * item_count))
