@@ -18,6 +18,8 @@ struct AppParams {
   // Execution parameters
   int n_threads = 4;
   int n_blocks = 64;
+  
+  int n_iterations = 1;
 
   // Debug parameters
 

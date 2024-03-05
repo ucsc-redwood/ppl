@@ -3,9 +3,45 @@
 #include <cuda_runtime_api.h>
 #include <spdlog/spdlog.h>
 
+#include "cuda/helper.cuh"
 #include "cuda/kernels/02_sort.cuh"
 
 namespace gpu {
+
+namespace details {
+void InitMemory(unsigned int* u_global_histogram,
+                unsigned int* u_index,
+                unsigned int* u_first_pass_histogram,
+                unsigned int* u_second_pass_histogram,
+                unsigned int* u_third_pass_histogram,
+                unsigned int* u_fourth_pass_histogram,
+                int n) {
+  constexpr auto radix = 256;
+  constexpr auto radixPasses = 4;
+  const auto binning_thread_blocks = cub::DivideAndRoundUp(n, 7680);
+
+  CHECK_CUDA_CALL(cudaMemset(
+      u_global_histogram, 0, radix * radixPasses * sizeof(unsigned int)));
+  CHECK_CUDA_CALL(cudaMemset(u_index, 0, radixPasses * sizeof(unsigned int)));
+  CHECK_CUDA_CALL(
+      cudaMemset(u_first_pass_histogram,
+                 0,
+                 radix * binning_thread_blocks * sizeof(unsigned int)));
+  CHECK_CUDA_CALL(
+      cudaMemset(u_third_pass_histogram,
+                 0,
+                 radix * binning_thread_blocks * sizeof(unsigned int)));
+  CHECK_CUDA_CALL(
+      cudaMemset(u_third_pass_histogram,
+                 0,
+                 radix * binning_thread_blocks * sizeof(unsigned int)));
+  CHECK_CUDA_CALL(
+      cudaMemset(u_fourth_pass_histogram,
+                 0,
+                 radix * binning_thread_blocks * sizeof(unsigned int)));
+}
+
+}  // namespace details
 
 // Note this will modify the input data, performing an in-place sort
 void dispatch_RadixSort(const int grid_size,
@@ -19,6 +55,15 @@ void dispatch_RadixSort(const int grid_size,
                         unsigned int* u_third_pass_histogram,
                         unsigned int* u_fourth_pass_histogram,
                         const int n) {
+  details::InitMemory(u_global_histogram,
+                      u_index,
+                      u_first_pass_histogram,
+                      u_second_pass_histogram,
+                      u_third_pass_histogram,
+                      u_fourth_pass_histogram,
+                      n);
+  SYNC_STREAM(stream);
+
   // need to match the .cu file
   constexpr int global_hist_threads = 128;
   constexpr int binning_threads = 512;

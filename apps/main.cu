@@ -12,13 +12,20 @@
 void run_all_in_gpu(NaivePipe* pipe,
                     const AppParams& params,
                     const cudaStream_t stream) {
-  gpu::dispatch_InitRandomVec4(params.n_blocks,
-                               stream,
-                               pipe->u_points.data(),
-                               params.n,
-                               params.min_coord,
-                               params.getRange(),
-                               params.seed);
+  // gpu::dispatch_InitRandomVec4(params.n_blocks,
+  //                              stream,
+  //                              pipe->u_points.data(),
+  //                              params.n,
+  //                              params.min_coord,
+  //                              params.getRange(),
+  //                              params.seed);
+  // SYNC_STREAM(stream);
+
+  cpu::k_InitRandomVec4(pipe->u_points.data(),
+                        params.n,
+                        params.min_coord,
+                        params.getRange(),
+                        params.seed);
 
   gpu::dispatch_ComputeMorton(params.n_blocks,
                               stream,
@@ -27,6 +34,23 @@ void run_all_in_gpu(NaivePipe* pipe,
                               params.n,
                               params.min_coord,
                               params.getRange());
+  SYNC_STREAM(stream);
+
+  // peek 32 keys
+  for (auto i = 0; i < 32; ++i) {
+    std::cout << "[u_sort_before" << i << "] " << pipe->u_morton_keys[i]
+              << "\n";
+  }
+
+  // tmp clear memory
+
+  // pipe->sort_tmp.u_sort_alt.clear();
+  // pipe->sort_tmp.u_global_histogram.clear();
+  // pipe->sort_tmp.u_index.clear();
+  // pipe->sort_tmp.u_first_pass_histogram.clear();
+  // pipe->sort_tmp.u_second_pass_histogram.clear();
+  // pipe->sort_tmp.u_third_pass_histogram.clear();
+  // pipe->sort_tmp.u_fourth_pass_histogram.clear();
 
   gpu::dispatch_RadixSort(params.n_blocks,
                           stream,
@@ -39,6 +63,14 @@ void run_all_in_gpu(NaivePipe* pipe,
                           pipe->sort_tmp.u_third_pass_histogram.data(),
                           pipe->sort_tmp.u_fourth_pass_histogram.data(),
                           params.n);
+  SYNC_STREAM(stream);
+
+  // peek 32 keys
+  for (auto i = 0; i < 32; ++i) {
+    std::cout << "[u_sort_after " << i << "] " << pipe->u_morton_keys[i]
+              << "\n";
+  }
+
   int num_unique;
   gpu::dispatch_Unique_easy(params.n_blocks,
                             stream,
@@ -47,7 +79,6 @@ void run_all_in_gpu(NaivePipe* pipe,
                             pipe->unique_tmp.u_flag_heads.data(),
                             params.n,
                             num_unique);
-
   SYNC_STREAM(stream);
 
   pipe->n_unique_keys = num_unique;
@@ -62,6 +93,7 @@ void run_all_in_gpu(NaivePipe* pipe,
                                pipe->brt.u_left_child.data(),
                                pipe->brt.u_parent.data(),
                                pipe->n_unique_keys);
+  SYNC_STREAM(stream);
 
   gpu::dispatch_EdgeCount(params.n_blocks,
                           stream,
@@ -69,6 +101,7 @@ void run_all_in_gpu(NaivePipe* pipe,
                           pipe->brt.u_parent.data(),
                           pipe->u_edge_count.data(),
                           pipe->n_brt_nodes);
+  SYNC_STREAM(stream);
 
   gpu::dispatch_PrefixSum_safe(params.n_blocks,
                                stream,
@@ -81,27 +114,27 @@ void run_all_in_gpu(NaivePipe* pipe,
   const auto n_oct_nodes = pipe->u_edge_offset[pipe->n_brt_nodes - 1];
   pipe->n_oct_nodes = n_oct_nodes;
 
-  gpu::dispatch_BuildOctree(
-      params.n_blocks,
-      stream,
-      // --- output parameters ---
-      pipe->oct.u_children,
-      pipe->oct.u_corner,
-      pipe->oct.u_cell_size,
-      pipe->oct.u_child_node_mask,
-      pipe->oct.u_child_leaf_mask,
-      // --- end output parameters, begin input parameters (read-only)
-      pipe->u_edge_offset.data(),
-      pipe->u_edge_count.data(),
-      pipe->u_unique_morton_keys.data(),
-      pipe->brt.u_prefix_n.data(),
-      pipe->brt.u_has_leaf_left,
-      pipe->brt.u_has_leaf_right,
-      pipe->brt.u_left_child.data(),
-      pipe->brt.u_parent.data(),
-      params.min_coord,
-      params.getRange(),
-      pipe->n_brt_nodes);
+  // gpu::dispatch_BuildOctree(
+  //     params.n_blocks,
+  //     stream,
+  //     // --- output parameters ---
+  //     pipe->oct.u_children,
+  //     pipe->oct.u_corner,
+  //     pipe->oct.u_cell_size,
+  //     pipe->oct.u_child_node_mask,
+  //     pipe->oct.u_child_leaf_mask,
+  //     // --- end output parameters, begin input parameters (read-only)
+  //     pipe->u_edge_offset.data(),
+  //     pipe->u_edge_count.data(),
+  //     pipe->u_unique_morton_keys.data(),
+  //     pipe->brt.u_prefix_n.data(),
+  //     pipe->brt.u_has_leaf_left,
+  //     pipe->brt.u_has_leaf_right,
+  //     pipe->brt.u_left_child.data(),
+  //     pipe->brt.u_parent.data(),
+  //     params.min_coord,
+  //     params.getRange(),
+  //     pipe->n_brt_nodes);
 
   SYNC_STREAM(stream);
 
@@ -211,8 +244,7 @@ int main(const int argc, const char** argv) {
   { spdlog::debug("Hello from thread {}", omp_get_thread_num()); }
 
   // ------------------------------
-  constexpr auto n_streams = 2;
-  constexpr auto n_iteration = 256;
+  constexpr auto n_streams = 1;
 
   std::array<cudaStream_t, n_streams> streams;
   for (auto& stream : streams) {
@@ -225,7 +257,7 @@ int main(const int argc, const char** argv) {
   // initilize a timer
   auto start = std::chrono::high_resolution_clock::now();
 
-  for (auto i = 0; i < n_iteration; ++i) {
+  for (auto i = 0; i < params.n_iterations; ++i) {
     spdlog::info("Starting Iteration: {}", i);
     ++params.seed;
     if (params.use_cpu) {
@@ -233,6 +265,7 @@ int main(const int argc, const char** argv) {
     } else {
       run_all_in_gpu(pipe.get(), params, streams[0]);
     }
+    SYNC_DEVICE();
   }
 
   SYNC_DEVICE();
@@ -242,7 +275,7 @@ int main(const int argc, const char** argv) {
       "Elapsed time: {} ms",
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
               .count() /
-          n_iteration);
+          params.n_iterations);
 
   // ------------------------------
 

@@ -20,6 +20,9 @@ AppParams::AppParams(const int argc, const char **argv) {
   app.add_option("-l,--log-level", log_level, "Log level")
       ->check(CLI::Range(0, 3));
 
+  app.add_option("-i,--iterations", n_iterations, "Number of iterations")
+      ->check(CLI::PositiveNumber);
+
   app.add_flag("-x", use_cpu, "Use CPU");
 
   try {
