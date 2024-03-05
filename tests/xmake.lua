@@ -7,6 +7,6 @@ for _, file in ipairs(os.files("test_*.cu")) do
         add_includedirs("$(projectdir)/include")
         add_files(file)
         add_cugencodes("native")
-        add_packages("gtest", "spdlog")
+        add_packages("gtest", "spdlog", "glm")
         add_deps("ppl")
 end
