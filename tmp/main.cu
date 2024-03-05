@@ -160,7 +160,8 @@ int main(const int argc, const char* const argv[]) {
         handler->begin(), handler->end(), [i = n]() mutable { return --i; });
 
     // auto is_sorted = std::is_sorted(handler->begin(), handler->end());
-    // std::cout << "Is sorted (before): " << std::boolalpha << is_sorted << '\n';
+    // std::cout << "Is sorted (before): " << std::boolalpha << is_sorted <<
+    // '\n';
 
     // ------------------------------
     // handler->clearMem();
@@ -225,7 +226,8 @@ int main(const int argc, const char* const argv[]) {
     // ------------------------------
 
     // is_sorted = std::is_sorted(handler->begin(), handler->end());
-    // std::cout << "Is sorted (after): " << std::boolalpha << is_sorted << '\n';
+    // std::cout << "Is sorted (after): " << std::boolalpha << is_sorted <<
+    // '\n';
   }
 
   CHECK_CUDA_CALL(cudaEventRecord(stop, stream));
