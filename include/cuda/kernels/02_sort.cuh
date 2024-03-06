@@ -23,4 +23,14 @@ __global__ void k_DigitBinningPass(unsigned int *sort,
                                    unsigned int size,
                                    unsigned int radixShift);
 
+namespace backup {
+__global__ void k_DigitBinningPass_Original(
+    unsigned int *sort,
+    unsigned int *alt,
+    volatile unsigned int *passHistogram,
+    volatile unsigned int *index,
+    unsigned int size,
+    unsigned int radixShift);
+}
+
 }  // namespace gpu
