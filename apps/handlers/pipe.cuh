@@ -110,5 +110,38 @@ static void dispatch_ComputeMorton(const int grid_size,
       pipe.u_points, pipe.sort.data(), pipe.n, pipe.min_coord, pipe.range);
 }
 
+static void dispatch_EdgeCount(const int grid_size,
+                               const cudaStream_t stream,
+                               const RadixTree& brt,
+                               int* edge_count) {
+  constexpr auto block_size = 512;
+
+  spdlog::debug(
+      "Dispatching k_EdgeCount with ({} blocks, {} threads) "
+      "on {} items",
+      grid_size,
+      block_size,
+      brt.getNumBrtNodes());
+
+  gpu::k_EdgeCount<<<grid_size, block_size, 0, stream>>>(
+      brt.u_prefix_n, brt.u_parent, edge_count, brt.getNumBrtNodes());
+}
+
+static void dispatch_EdgeOffset_safe(const int grid_size,
+                                     const cudaStream_t stream,
+                                     const int* edge_count,
+                                     int* edge_offset,
+                                     const size_t n_brt_nodes) {
+  constexpr auto n_threads = PrefixSumAgent<int>::n_threads;
+
+  spdlog::debug(
+      "Dispatching k_SingleBlockExclusiveScan with (1 blocks, {} "
+      "threads)",
+      n_threads);
+
+  gpu::k_SingleBlockExclusiveScan<<<1, n_threads, 0, stream>>>(
+      edge_count, edge_offset, n_brt_nodes);
+}
+
 }  // namespace v2
 }  // namespace gpu

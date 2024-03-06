@@ -14,26 +14,45 @@ void runAllStagesOnGpu(const AppParams& params,
   gpu::v2::dispatch_RadixSort(params.n_blocks, stream, pipe->sort);
   gpu::v2::dispatch_RemoveDuplicates(
       params.n_blocks, stream, pipe->sort.data(), pipe->unique);
-  SYNC_STREAM(stream);
 
+  SYNC_STREAM(stream);
   const auto n_unique = pipe->unique.attemptGetNumUnique();
+  pipe->brt.setNumBrtNodes(n_unique - 1);
 
   gpu::v2::dispatch_BuildRadixTree(
       params.n_blocks, stream, pipe->unique.begin(), n_unique, pipe->brt);
+  gpu::v2::dispatch_EdgeCount(
+      params.n_blocks, stream, pipe->brt, pipe->u_edge_count);
+  gpu::v2::dispatch_EdgeOffset_safe(params.n_blocks,
+                                    stream,
+                                    pipe->u_edge_count,
+                                    pipe->u_edge_offset,
+                                    pipe->brt.getNumBrtNodes());
 
   SYNC_STREAM(stream);
-  // peek 10 brt nodes
-  for (auto i = 0; i < 10; ++i) {
-    spdlog::info("BRT node {}: {}", i, pipe->brt.u_prefix_n[i]);
-  }
+  // const auto n_unique = pipe->attemptGetNumOctNodes();
+  const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() - 1];
 
-  spdlog::info("Unique keys: {}/{} ({}%)",
+  SYNC_STREAM(stream);
+
+  // spdlog::info("Unique keys: {}/{} ({}%)",
+  //              n_unique,
+  //              pipe->n,
+  //              100.0 * n_unique / pipe->n);
+  // spdlog::info("Oct nodes: {}/{} ({}%)",
+  //              n_oct_nodes,
+  //              pipe->n,
+  //              100.0 * n_oct_nodes / pipe->n);
+
+  // merge the two spdlog calls, then set precision to 2 decimal places
+
+  spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
                n_unique,
                pipe->n,
-               100.0 * n_unique / pipe->n);
-
-  // auto is_sorted = std::is_sorted(pipe->sort.begin(), pipe->sort.end());
-  // spdlog::info("Is sorted (after): {}", is_sorted);
+               100.0f * n_unique / pipe->n,
+               n_oct_nodes,
+               pipe->n,
+               100.0f * n_oct_nodes / pipe->n);
 }
 
 int main(const int argc, const char** argv) {

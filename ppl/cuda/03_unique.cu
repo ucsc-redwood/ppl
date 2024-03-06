@@ -22,8 +22,6 @@ __global__ void k_MoveDups(const unsigned int *u_keys,
   UniqueAgent agent(n);
   agent.Process_MoveDups(
       u_keys, u_flag_heads_sums, n, u_keys_out, n_unique_out);
-
-      
 }
 
 }  // namespace gpu
