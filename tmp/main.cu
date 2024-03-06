@@ -138,11 +138,9 @@ int main(const int argc, const char* const argv[]) {
   int device = 0;
   cudaDeviceProp prop;
   CHECK_CUDA_CALL(cudaGetDeviceProperties(&prop, device));
-  std::cout << "Device: " << prop.name << '\n';
-  std::cout << "Concurrent Managed Access: " << std::boolalpha
-            << prop.concurrentManagedAccess << '\n';
-  std::cout << "Concurrent Kernels: " << std::boolalpha
-            << prop.concurrentKernels << '\n';
+  std::cout << "Concurrent Managed Access: " << prop.concurrentManagedAccess
+            << '\n';
+  std::cout << "Concurrent Kernels: " << prop.concurrentKernels << '\n';
 
   std::cout << "Number of elements: " << n << '\n';
   std::cout << "Grid size: " << grid_size << '\n';
