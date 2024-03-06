@@ -12,8 +12,9 @@
 
 template <typename T>
 constexpr void MallocManaged(T **ptr, const size_t num_items) {
-  CHECK_CUDA_CALL(
-      cudaMallocManaged(reinterpret_cast<void **>(ptr), num_items * sizeof(T)));
+  CHECK_CUDA_CALL(cudaMallocManaged(reinterpret_cast<void **>(ptr),
+                                    num_items * sizeof(T),
+                                    cudaMemAttachHost));
 }
 
 template <typename T>
@@ -22,24 +23,30 @@ constexpr void MallocDevice(T **ptr, const size_t num_items) {
       cudaMalloc(reinterpret_cast<void **>(ptr), num_items * sizeof(T)));
 }
 
-template <>
-inline void MallocDevice<void>(void **ptr, const size_t num_items) {
-  CHECK_CUDA_CALL(cudaMalloc(ptr, num_items));
-}
+// // Specialization for void type
+// template <>
+// inline void MallocDevice<void>(void **ptr, const size_t num_items) {
+//   CHECK_CUDA_CALL(cudaMalloc(ptr, num_items));
+// }
 
 #define MALLOC_MANAGED(ptr, num_items) MallocManaged(ptr, num_items)
-
+#define MALLOC_DEVICE(ptr, num_items) MallocDevice(ptr, num_items)
 #define CUDA_FREE(ptr) CHECK_CUDA_CALL(cudaFree(ptr))
 
 #define ATTACH_STREAM_SINGLE(ptr) \
-  CHECK_CUDA_CALL(cudaStreamAttachMemAsync(stream, ptr, 0, cudaMemAttachSingle))
+  CHECK_CUDA_CALL(cudaStreamAttachMemAsync(stream, ptr, 0))
+
+#define ATTACH_STREAM_GLOBAL(ptr) \
+  CHECK_CUDA_CALL(cudaStreamAttachMemAsync(stream, ptr, 0, cudaMemAttachGlobal))
+
+#define ATTACH_STREAM_HOST(ptr) \
+  CHECK_CUDA_CALL(cudaStreamAttachMemAsync(stream, ptr, 0, cudaMemAttachHost))
 
 #define SYNC_STREAM(stream) CHECK_CUDA_CALL(cudaStreamSynchronize(stream))
-
 #define SYNC_DEVICE() CHECK_CUDA_CALL(cudaDeviceSynchronize())
 
 template <typename T, typename Alloc>
-[[nodiscard]] std::size_t calculateMemorySize(
+[[nodiscard, deprecated]] std::size_t calculateMemorySize(
     const std::vector<T, Alloc> &vec) {
   return sizeof(T) * vec.size();
 }

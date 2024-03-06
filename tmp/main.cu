@@ -21,33 +21,37 @@ struct OneSweepHandler {
 
   // Essential Data
   const size_t n;
+  const size_t binning_blocks;  // abpit n / 7680
+
   unsigned int* u_sort;
 
   struct _IntermediateStorage {
-    unsigned int* u_sort_alt;
-    unsigned int* u_global_histogram;
-    unsigned int* u_index;
-    unsigned int* u_first_pass_histogram;
-    unsigned int* u_second_pass_histogram;
-    unsigned int* u_third_pass_histogram;
-    unsigned int* u_fourth_pass_histogram;
+    unsigned int* d_sort_alt;
+    unsigned int* d_global_histogram;
+    unsigned int* d_index;
+    unsigned int* d_first_pass_histogram;
+    unsigned int* d_second_pass_histogram;
+    unsigned int* d_third_pass_histogram;
+    unsigned int* d_fourth_pass_histogram;
   } im_storage;
 
   using IntermediateStorage = _IntermediateStorage;
 
   OneSweepHandler() = delete;
 
-  explicit OneSweepHandler(const size_t n) : n(n) {
+  explicit OneSweepHandler(const size_t n)
+      : n(n), binning_blocks(cub::DivideAndRoundUp(n, BIN_PART_SIZE)) {
+    // Essential buffer that CPU/GPU both can access
     MALLOC_MANAGED(&u_sort, n);
-    MALLOC_MANAGED(&im_storage.u_sort_alt, n);
-    MALLOC_MANAGED(&im_storage.u_global_histogram, RADIX * RADIX_PASSES);
-    MALLOC_MANAGED(&im_storage.u_index, RADIX_PASSES);
 
-    const auto num_parts = cub::DivideAndRoundUp(n, BIN_PART_SIZE);
-    MALLOC_MANAGED(&im_storage.u_first_pass_histogram, RADIX * num_parts);
-    MALLOC_MANAGED(&im_storage.u_second_pass_histogram, RADIX * num_parts);
-    MALLOC_MANAGED(&im_storage.u_third_pass_histogram, RADIX * num_parts);
-    MALLOC_MANAGED(&im_storage.u_fourth_pass_histogram, RADIX * num_parts);
+    // Temporary data on device that CPU doesn't need to access
+    MALLOC_DEVICE(&im_storage.d_sort_alt, n);
+    MALLOC_DEVICE(&im_storage.d_global_histogram, RADIX * RADIX_PASSES);
+    MALLOC_DEVICE(&im_storage.d_index, RADIX_PASSES);
+    MALLOC_DEVICE(&im_storage.d_first_pass_histogram, RADIX * binning_blocks);
+    MALLOC_DEVICE(&im_storage.d_second_pass_histogram, RADIX * binning_blocks);
+    MALLOC_DEVICE(&im_storage.d_third_pass_histogram, RADIX * binning_blocks);
+    MALLOC_DEVICE(&im_storage.d_fourth_pass_histogram, RADIX * binning_blocks);
     SYNC_DEVICE();
   }
 
@@ -58,16 +62,14 @@ struct OneSweepHandler {
 
   ~OneSweepHandler() {
     CUDA_FREE(u_sort);
-    CUDA_FREE(im_storage.u_sort_alt);
-    CUDA_FREE(im_storage.u_global_histogram);
-    CUDA_FREE(im_storage.u_index);
-    CUDA_FREE(im_storage.u_first_pass_histogram);
-    CUDA_FREE(im_storage.u_second_pass_histogram);
-    CUDA_FREE(im_storage.u_third_pass_histogram);
-    CUDA_FREE(im_storage.u_fourth_pass_histogram);
+    CUDA_FREE(im_storage.d_sort_alt);
+    CUDA_FREE(im_storage.d_global_histogram);
+    CUDA_FREE(im_storage.d_index);
+    CUDA_FREE(im_storage.d_first_pass_histogram);
+    CUDA_FREE(im_storage.d_second_pass_histogram);
+    CUDA_FREE(im_storage.d_third_pass_histogram);
+    CUDA_FREE(im_storage.d_fourth_pass_histogram);
   }
-
-  // write iterator .begin() and .end() for u_sort()
 
   [[nodiscard]] const unsigned int* begin() const { return u_sort; }
   [[nodiscard]] unsigned int* begin() { return u_sort; }
@@ -77,15 +79,12 @@ struct OneSweepHandler {
   [[nodiscard]] const unsigned int* getSort() const { return u_sort; }
   [[nodiscard]] unsigned int* getSort() { return u_sort; }
 
-  void attachStream(const cudaStream_t stream) const {
-    ATTACH_STREAM_SINGLE(u_sort);
-    ATTACH_STREAM_SINGLE(im_storage.u_sort_alt);
-    ATTACH_STREAM_SINGLE(im_storage.u_global_histogram);
-    ATTACH_STREAM_SINGLE(im_storage.u_index);
-    ATTACH_STREAM_SINGLE(im_storage.u_first_pass_histogram);
-    ATTACH_STREAM_SINGLE(im_storage.u_second_pass_histogram);
-    ATTACH_STREAM_SINGLE(im_storage.u_third_pass_histogram);
-    ATTACH_STREAM_SINGLE(im_storage.u_fourth_pass_histogram);
+  void attachStreamGlobal(const cudaStream_t stream) const {
+    ATTACH_STREAM_GLOBAL(u_sort);
+  }
+
+  void attachStreamHost(const cudaStream_t stream) const {
+    ATTACH_STREAM_HOST(u_sort);
     SYNC_STREAM(stream);
   }
 
@@ -93,14 +92,15 @@ struct OneSweepHandler {
     const auto essential = CALC_MEM(u_sort, n);
 
     auto temp = 0;
-    const auto num_parts = cub::DivideAndRoundUp(n, BIN_PART_SIZE);
-    temp += CALC_MEM(im_storage.u_sort_alt, n);
-    temp += CALC_MEM(im_storage.u_global_histogram, RADIX * RADIX_PASSES);
-    temp += CALC_MEM(im_storage.u_index, RADIX_PASSES);
-    temp += CALC_MEM(im_storage.u_first_pass_histogram, RADIX * num_parts);
-    temp += CALC_MEM(im_storage.u_second_pass_histogram, RADIX * num_parts);
-    temp += CALC_MEM(im_storage.u_third_pass_histogram, RADIX * num_parts);
-    temp += CALC_MEM(im_storage.u_fourth_pass_histogram, RADIX * num_parts);
+    temp += CALC_MEM(im_storage.d_sort_alt, n);
+    temp += CALC_MEM(im_storage.d_global_histogram, RADIX * RADIX_PASSES);
+    temp += CALC_MEM(im_storage.d_index, RADIX_PASSES);
+    temp += CALC_MEM(im_storage.d_first_pass_histogram, RADIX * binning_blocks);
+    temp +=
+        CALC_MEM(im_storage.d_second_pass_histogram, RADIX * binning_blocks);
+    temp += CALC_MEM(im_storage.d_third_pass_histogram, RADIX * binning_blocks);
+    temp +=
+        CALC_MEM(im_storage.d_fourth_pass_histogram, RADIX * binning_blocks);
 
     std::cout << "Total: " << (essential + temp) / 1024.0 / 1024.0
               << " MB (100.000%) Essential: " << essential / 1024.0 / 1024.0
@@ -109,66 +109,15 @@ struct OneSweepHandler {
               << (temp / (essential + temp)) * 100.0 << "%)" << std::endl;
   }
 
-  void debug_remakeMemory() {
-    CUDA_FREE(u_sort);
-    CUDA_FREE(im_storage.u_sort_alt);
-    CUDA_FREE(im_storage.u_global_histogram);
-    CUDA_FREE(im_storage.u_index);
-    CUDA_FREE(im_storage.u_first_pass_histogram);
-    CUDA_FREE(im_storage.u_second_pass_histogram);
-    CUDA_FREE(im_storage.u_third_pass_histogram);
-    CUDA_FREE(im_storage.u_fourth_pass_histogram);
-
-    MALLOC_MANAGED(&u_sort, n);
-    MALLOC_MANAGED(&im_storage.u_sort_alt, n);
-    MALLOC_MANAGED(&im_storage.u_global_histogram, RADIX * RADIX_PASSES);
-    MALLOC_MANAGED(&im_storage.u_index, RADIX_PASSES);
-    const auto num_parts = cub::DivideAndRoundUp(n, BIN_PART_SIZE);
-    MALLOC_MANAGED(&im_storage.u_first_pass_histogram, RADIX * num_parts);
-    MALLOC_MANAGED(&im_storage.u_second_pass_histogram, RADIX * num_parts);
-    MALLOC_MANAGED(&im_storage.u_third_pass_histogram, RADIX * num_parts);
-    MALLOC_MANAGED(&im_storage.u_fourth_pass_histogram, RADIX * num_parts);
-
-    SYNC_DEVICE();
-  }
-
   void clearMem() const {
-    // // use std::memset
-    // std::memset(im_storage.u_global_histogram,
-    //             0,
-    //             RADIX * RADIX_PASSES * sizeof(unsigned int));
-    // std::memset(im_storage.u_index, 0, RADIX_PASSES * sizeof(unsigned int));
-    // std::memset(im_storage.u_first_pass_histogram,
-    //             0,
-    //             RADIX * BIN_PARTS * sizeof(unsigned int));
-    // std::memset(im_storage.u_second_pass_histogram,
-    //             0,
-    //             RADIX * BIN_PARTS * sizeof(unsigned int));
-    // std::memset(im_storage.u_third_pass_histogram,
-    //             0,
-    //             RADIX * BIN_PARTS * sizeof(unsigned int));
-    // std::memset(im_storage.u_fourth_pass_histogram,
-    //             0,
-    //             RADIX * BIN_PARTS * sizeof(unsigned int));
-
-    // SET_MEM_2_ZERO(im_storage.u_global_histogram, RADIX * RADIX_PASSES);
-    // SET_MEM_2_ZERO(im_storage.u_index, RADIX_PASSES);
-
-    // const auto num_parts = cub::DivideAndRoundUp(n, BIN_PART_SIZE);
-    // SET_MEM_2_ZERO(im_storage.u_first_pass_histogram, RADIX * num_parts);
-    // SET_MEM_2_ZERO(im_storage.u_second_pass_histogram, RADIX * num_parts);
-    // SET_MEM_2_ZERO(im_storage.u_third_pass_histogram, RADIX * num_parts);
-    // SET_MEM_2_ZERO(im_storage.u_fourth_pass_histogram, RADIX * num_parts);
+    SET_MEM_2_ZERO(im_storage.d_global_histogram, RADIX * RADIX_PASSES);
+    SET_MEM_2_ZERO(im_storage.d_index, RADIX_PASSES);
+    SET_MEM_2_ZERO(im_storage.d_first_pass_histogram, RADIX * binning_blocks);
+    SET_MEM_2_ZERO(im_storage.d_second_pass_histogram, RADIX * binning_blocks);
+    SET_MEM_2_ZERO(im_storage.d_third_pass_histogram, RADIX * binning_blocks);
+    SET_MEM_2_ZERO(im_storage.d_fourth_pass_histogram, RADIX * binning_blocks);
   }
 };
-
-// __global__ void k_ClearMemory(float* u_test, n) {
-//   const auto idx = blockIdx.x * blockDim.x + threadIdx.x;
-//   const auto stride = gridDim.x * blockDim.x;
-//   for (auto i = idx; i < n; i += stride) {
-//     u_test[i] = 0;
-//   }
-// }
 
 int main(const int argc, const char* const argv[]) {
   static_assert(sizeof(unsigned int) == 4, "sizeof(unsigned int) != 4");
@@ -186,6 +135,15 @@ int main(const int argc, const char* const argv[]) {
     n_iterations = std::strtol(argv[2], nullptr, 10);
   }
 
+  int device = 0;
+  cudaDeviceProp prop;
+  CHECK_CUDA_CALL(cudaGetDeviceProperties(&prop, device));
+  std::cout << "Device: " << prop.name << '\n';
+  std::cout << "Concurrent Managed Access: " << std::boolalpha
+            << prop.concurrentManagedAccess << '\n';
+  std::cout << "Concurrent Kernels: " << std::boolalpha
+            << prop.concurrentKernels << '\n';
+
   std::cout << "Number of elements: " << n << '\n';
   std::cout << "Grid size: " << grid_size << '\n';
   std::cout << "Number of iterations: " << n_iterations << '\n';
@@ -194,7 +152,6 @@ int main(const int argc, const char* const argv[]) {
 
   cudaStream_t stream;
   CHECK_CUDA_CALL(cudaStreamCreate(&stream));
-  handler->attachStream(stream);
   handler->memoryUsage();
 
   cudaEvent_t start, stop;
@@ -206,9 +163,8 @@ int main(const int argc, const char* const argv[]) {
 
   for (auto i = 0; i < n_iterations; ++i) {
     // handler->clearMem();
-    handler->debug_remakeMemory();
-    handler->attachStream(stream);
-    SYNC_STREAM(stream);
+    // handler->debug_remakeMemory();
+    // handler->attachStream(stream);
 
     // input
     std::generate(
@@ -218,41 +174,42 @@ int main(const int argc, const char* const argv[]) {
     std::cout << "Is sorted (before): " << std::boolalpha << is_sorted << '\n';
 
     // ------------------------------
-    // handler->clearMem();
+    handler->clearMem();
+    handler->attachStreamGlobal(stream);
 
     gpu::k_GlobalHistogram<<<grid_size,
                              OneSweepHandler::GLOBAL_HIST_THREADS,
                              0,
                              stream>>>(
-        handler->u_sort, handler->im_storage.u_global_histogram, n);
+        handler->u_sort, handler->im_storage.d_global_histogram, n);
 
     gpu::k_Scan<<<OneSweepHandler::RADIX_PASSES,
                   OneSweepHandler::RADIX,
                   0,
-                  stream>>>(handler->im_storage.u_global_histogram,
-                            handler->im_storage.u_first_pass_histogram,
-                            handler->im_storage.u_second_pass_histogram,
-                            handler->im_storage.u_third_pass_histogram,
-                            handler->im_storage.u_fourth_pass_histogram);
+                  stream>>>(handler->im_storage.d_global_histogram,
+                            handler->im_storage.d_first_pass_histogram,
+                            handler->im_storage.d_second_pass_histogram,
+                            handler->im_storage.d_third_pass_histogram,
+                            handler->im_storage.d_fourth_pass_histogram);
 
     gpu::k_DigitBinningPass<<<grid_size,
                               OneSweepHandler::BINNING_THREADS,
                               0,
                               stream>>>(
         handler->u_sort,  // <---
-        handler->im_storage.u_sort_alt,
-        handler->im_storage.u_first_pass_histogram,
-        handler->im_storage.u_index,
+        handler->im_storage.d_sort_alt,
+        handler->im_storage.d_first_pass_histogram,
+        handler->im_storage.d_index,
         n,
         0);
     gpu::k_DigitBinningPass<<<grid_size,
                               OneSweepHandler::BINNING_THREADS,
                               0,
                               stream>>>(
-        handler->im_storage.u_sort_alt,
+        handler->im_storage.d_sort_alt,
         handler->u_sort,  // <---
-        handler->im_storage.u_second_pass_histogram,
-        handler->im_storage.u_index,
+        handler->im_storage.d_second_pass_histogram,
+        handler->im_storage.d_index,
         n,
         8);
     gpu::k_DigitBinningPass<<<grid_size,
@@ -260,25 +217,26 @@ int main(const int argc, const char* const argv[]) {
                               0,
                               stream>>>(
         handler->u_sort,  // <---
-        handler->im_storage.u_sort_alt,
-        handler->im_storage.u_third_pass_histogram,
-        handler->im_storage.u_index,
+        handler->im_storage.d_sort_alt,
+        handler->im_storage.d_third_pass_histogram,
+        handler->im_storage.d_index,
         n,
         16);
     gpu::k_DigitBinningPass<<<grid_size,
                               OneSweepHandler::BINNING_THREADS,
                               0,
                               stream>>>(
-        handler->im_storage.u_sort_alt,
+        handler->im_storage.d_sort_alt,
         handler->u_sort,  // <---
-        handler->im_storage.u_fourth_pass_histogram,
-        handler->im_storage.u_index,
+        handler->im_storage.d_fourth_pass_histogram,
+        handler->im_storage.d_index,
         n,
         24);
 
-    SYNC_STREAM(stream);
     // ------------------------------
 
+    handler->attachStreamHost(stream);
+    SYNC_STREAM(stream);
     is_sorted = std::is_sorted(handler->begin(), handler->end());
     std::cout << "Is sorted (after): " << std::boolalpha << is_sorted << '\n';
   }
