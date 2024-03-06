@@ -25,6 +25,12 @@ template <class T>
   return block_size;
 }
 
+#define CREATE_STREAM  \
+  cudaStream_t stream; \
+  CHECK_CUDA_CALL(cudaStreamCreate(&stream));
+
+#define DESCROY_STREAM CHECK_CUDA_CALL(cudaStreamDestroy(stream));
+
 class CudaEventTimer {
  public:
   /**

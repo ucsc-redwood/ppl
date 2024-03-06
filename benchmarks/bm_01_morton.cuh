@@ -1,7 +1,7 @@
 #pragma once
 
-#include "benchmark_helper.cuh"
 #include "config.h"
+#include "cu_bench_helper.cuh"
 
 static void BM_Morton(bm::State& st) {
   constexpr auto config = configs[0];
