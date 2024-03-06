@@ -79,6 +79,10 @@ struct OneSweepHandler {
   [[nodiscard]] const unsigned int* getSort() const { return u_sort; }
   [[nodiscard]] unsigned int* getSort() { return u_sort; }
 
+  void attachStreamSingle(const cudaStream_t stream) const {
+    ATTACH_STREAM_SINGLE(u_sort);
+  }
+
   void attachStreamGlobal(const cudaStream_t stream) const {
     ATTACH_STREAM_GLOBAL(u_sort);
   }
@@ -140,7 +144,6 @@ int main(const int argc, const char* const argv[]) {
   CHECK_CUDA_CALL(cudaGetDeviceProperties(&prop, device));
   std::cout << "Concurrent Managed Access: " << prop.concurrentManagedAccess
             << '\n';
-  std::cout << "Concurrent Kernels: " << prop.concurrentKernels << '\n';
 
   std::cout << "Number of elements: " << n << '\n';
   std::cout << "Grid size: " << grid_size << '\n';
@@ -157,13 +160,11 @@ int main(const int argc, const char* const argv[]) {
   CHECK_CUDA_CALL(cudaEventCreate(&start));
   CHECK_CUDA_CALL(cudaEventCreate(&stop));
 
+  WarmUpGPU();
+
   CHECK_CUDA_CALL(cudaEventRecord(start, stream));
 
   for (auto i = 0; i < n_iterations; ++i) {
-    // handler->clearMem();
-    // handler->debug_remakeMemory();
-    // handler->attachStream(stream);
-
     // input
     std::generate(
         handler->begin(), handler->end(), [i = n]() mutable { return --i; });
@@ -173,7 +174,7 @@ int main(const int argc, const char* const argv[]) {
 
     // ------------------------------
     handler->clearMem();
-    handler->attachStreamGlobal(stream);
+    handler->attachStreamSingle(stream);
 
     gpu::k_GlobalHistogram<<<grid_size,
                              OneSweepHandler::GLOBAL_HIST_THREADS,
@@ -233,7 +234,6 @@ int main(const int argc, const char* const argv[]) {
 
     // ------------------------------
 
-    handler->attachStreamHost(stream);
     SYNC_STREAM(stream);
     is_sorted = std::is_sorted(handler->begin(), handler->end());
     std::cout << "Is sorted (after): " << std::boolalpha << is_sorted << '\n';

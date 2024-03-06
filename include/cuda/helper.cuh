@@ -23,14 +23,10 @@ constexpr void MallocDevice(T **ptr, const size_t num_items) {
       cudaMalloc(reinterpret_cast<void **>(ptr), num_items * sizeof(T)));
 }
 
-// // Specialization for void type
-// template <>
-// inline void MallocDevice<void>(void **ptr, const size_t num_items) {
-//   CHECK_CUDA_CALL(cudaMalloc(ptr, num_items));
-// }
-
 #define MALLOC_MANAGED(ptr, num_items) MallocManaged(ptr, num_items)
+
 #define MALLOC_DEVICE(ptr, num_items) MallocDevice(ptr, num_items)
+
 #define CUDA_FREE(ptr) CHECK_CUDA_CALL(cudaFree(ptr))
 
 #define ATTACH_STREAM_SINGLE(ptr) \
@@ -43,6 +39,7 @@ constexpr void MallocDevice(T **ptr, const size_t num_items) {
   CHECK_CUDA_CALL(cudaStreamAttachMemAsync(stream, ptr, 0, cudaMemAttachHost))
 
 #define SYNC_STREAM(stream) CHECK_CUDA_CALL(cudaStreamSynchronize(stream))
+
 #define SYNC_DEVICE() CHECK_CUDA_CALL(cudaDeviceSynchronize())
 
 template <typename T, typename Alloc>
@@ -56,3 +53,10 @@ template <typename T, typename Alloc>
 #define SET_MEM_2_ZERO(ptr, item_count) \
   CHECK_CUDA_CALL(cudaMemsetAsync(      \
       ptr, 0, sizeof(std::remove_pointer_t<decltype(ptr)>) * item_count))
+
+__global__ void emptyKernel() {}
+
+inline void WarmUpGPU() {
+  emptyKernel<<<1, 1>>>();
+  SYNC_DEVICE();
+}
