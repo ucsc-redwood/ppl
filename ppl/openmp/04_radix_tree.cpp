@@ -42,10 +42,19 @@ void k_BuildRadixTree(const int n_unique,
                       bool* has_leaf_left,
                       bool* has_leaf_right,
                       int* left_child,
+                      int* parent) {}
+
+void k_BuildRadixTree(const int n_threads,
+                      const int n_unique,
+                      const unsigned int* codes,
+                      uint8_t* prefix_n,
+                      bool* has_leaf_left,
+                      bool* has_leaf_right,
+                      int* left_child,
                       int* parent) {
   const auto n = n_unique - 1;  // Number of internal nodes
 
-#pragma omp parallel for
+#pragma omp parallel for num_threads(n_threads)
   for (int i = 0; i < n; i++) {
     const auto code_i = codes[i];
 

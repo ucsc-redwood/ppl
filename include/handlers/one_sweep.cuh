@@ -26,6 +26,7 @@ struct OneSweepHandler {
 
   // ------------------------
 
+
   struct _IntermediateStorage {
     unsigned int* d_sort_alt;
     unsigned int* d_global_histogram;

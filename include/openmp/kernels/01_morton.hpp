@@ -4,10 +4,11 @@
 
 namespace cpu {
 
-void k_ComputeMortonCode(const glm::vec4* data,
+void k_ComputeMortonCode(const int n_threads,
+                         const glm::vec4* data,
                          unsigned int* morton_keys,
-                         int n,
-                         float min_coord,
-                         float range);
+                         const int n,
+                         const float min_coord,
+                         const float range);
 
 }  // namespace cpu

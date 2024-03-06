@@ -4,7 +4,8 @@
 
 namespace cpu {
 
-void k_MakeOctNodes(int (*u_children)[8],
+void k_MakeOctNodes(const int n_threads,
+                    int (*u_children)[8],
                     glm::vec4* u_corner,
                     float* u_cell_size,
                     int* u_child_node_mask,
@@ -46,7 +47,8 @@ void k_MakeOctNodes(int (*u_children)[8],
   }
 }
 
-void k_LinkLeafNodes(int (*u_children)[8],
+void k_LinkLeafNodes(const int n_threads,
+                     int (*u_children)[8],
                      int* u_child_leaf_mask,
                      const int* node_offsets,
                      const int* node_counts,
@@ -72,4 +74,5 @@ void k_LinkLeafNodes(int (*u_children)[8],
                                 rt_leftChild);
   }
 }
+
 }  // namespace cpu
