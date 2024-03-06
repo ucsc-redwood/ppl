@@ -2,8 +2,39 @@
 #include <spdlog/spdlog.h>
 
 #include "app_params.hpp"
+// #include "baselines.h"
 #include "handlers/pipe.cuh"
 #include "kernels_fwd.h"
+
+void runAllStagesOnGpu(const AppParams& params,
+                       const cudaStream_t stream,
+                       const std::unique_ptr<Pipe>& pipe) {
+  gpu::v2::dispatch_Init(params.n_blocks, stream, *pipe);
+  gpu::v2::dispatch_ComputeMorton(params.n_blocks, stream, *pipe);
+  gpu::v2::dispatch_RadixSort(params.n_blocks, stream, pipe->sort);
+  gpu::v2::dispatch_RemoveDuplicates(
+      params.n_blocks, stream, pipe->sort.data(), pipe->unique);
+  SYNC_STREAM(stream);
+
+  const auto n_unique = pipe->unique.attemptGetNumUnique();
+
+  gpu::v2::dispatch_BuildRadixTree(
+      params.n_blocks, stream, pipe->unique.begin(), n_unique, pipe->brt);
+
+  SYNC_STREAM(stream);
+  // peek 10 brt nodes
+  for (auto i = 0; i < 10; ++i) {
+    spdlog::info("BRT node {}: {}", i, pipe->brt.u_prefix_n[i]);
+  }
+
+  spdlog::info("Unique keys: {}/{} ({}%)",
+               n_unique,
+               pipe->n,
+               100.0 * n_unique / pipe->n);
+
+  // auto is_sorted = std::is_sorted(pipe->sort.begin(), pipe->sort.end());
+  // spdlog::info("Is sorted (after): {}", is_sorted);
+}
 
 int main(const int argc, const char** argv) {
   AppParams params(argc, argv);
@@ -45,16 +76,8 @@ int main(const int argc, const char** argv) {
   pipe->attachStreamGlobal(streams[0]);
 
   for (auto i = 0; i < n_iterations; ++i) {
-    gpu::v2::dispatch_Init(params.n_blocks, streams[0], *pipe);
-
-    gpu::v2::dispatch_ComputeMorton(params.n_blocks, streams[0], *pipe);
-
-    gpu::v2::dispatch_RadixSort(params.n_blocks, streams[0], pipe->sort);
-
-    SYNC_STREAM(streams[0]);
-
-    auto is_sorted = std::is_sorted(pipe->sort.begin(), pipe->sort.end());
-    spdlog::info("Is sorted (after): {}", is_sorted);
+    ++pipe->seed;
+    runAllStagesOnGpu(params, streams[0], pipe);
   }
 
   // ------------------------------

@@ -54,10 +54,8 @@ template <typename T, typename Alloc>
   CHECK_CUDA_CALL(cudaMemsetAsync(      \
       ptr, 0, sizeof(std::remove_pointer_t<decltype(ptr)>) * item_count))
 
-__global__ void emptyKernel() {}
-
 inline void warmUpGPU() {
-  emptyKernel<<<1, 1>>>();
+  // emptyKernel<<<1, 1>>>();
   SYNC_DEVICE();
 }
 

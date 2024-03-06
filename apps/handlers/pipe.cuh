@@ -5,6 +5,7 @@
 #include "kernels_fwd.h"
 #include "one_sweep.cuh"
 #include "radix_tree.cuh"
+#include "unique.cuh"
 
 struct Pipe {
   const size_t n;
@@ -21,9 +22,9 @@ struct Pipe {
   // ------------------------
 
   glm::vec4* u_points;
-  OneSweepHandler sort;
-  unsigned int* u_unique_keys;
-  RadixTree brt;
+  OneSweepHandler sort;  // u_sort, and temp...
+  UniqueHandler unique;  // u_unique_keys, and temp...
+  RadixTree brt;         // tree Nodes (SoA) ...
   int* u_edge_count;
   int* u_edge_offset;
 
@@ -31,9 +32,14 @@ struct Pipe {
   Pipe() = delete;
 
   explicit Pipe(const size_t n, float min_coord, float range, float seed)
-      : n(n), sort(n), brt(n), min_coord(min_coord), range(range), seed(seed) {
+      : n(n),
+        sort(n),
+        unique(n),
+        brt(n),
+        min_coord(min_coord),
+        range(range),
+        seed(seed) {
     MALLOC_MANAGED(&u_points, n);
-    MALLOC_MANAGED(&u_unique_keys, n);
     MALLOC_MANAGED(&u_edge_count, n);
     MALLOC_MANAGED(&u_edge_offset, n);
   }
@@ -45,28 +51,24 @@ struct Pipe {
 
   ~Pipe() {
     CUDA_FREE(u_points);
-    CUDA_FREE(u_unique_keys);
     CUDA_FREE(u_edge_count);
     CUDA_FREE(u_edge_offset);
   }
 
   void attachStreamSingle(const cudaStream_t stream) const {
     ATTACH_STREAM_SINGLE(u_points);
-    ATTACH_STREAM_SINGLE(u_unique_keys);
     ATTACH_STREAM_SINGLE(u_edge_count);
     ATTACH_STREAM_SINGLE(u_edge_offset);
   }
 
   void attachStreamGlobal(const cudaStream_t stream) const {
     ATTACH_STREAM_GLOBAL(u_points);
-    ATTACH_STREAM_GLOBAL(u_unique_keys);
     ATTACH_STREAM_GLOBAL(u_edge_count);
     ATTACH_STREAM_GLOBAL(u_edge_offset);
   }
 
   void attachStreamHost(const cudaStream_t stream) const {
     ATTACH_STREAM_HOST(u_points);
-    ATTACH_STREAM_HOST(u_unique_keys);
     ATTACH_STREAM_HOST(u_edge_count);
     ATTACH_STREAM_HOST(u_edge_offset);
   }
