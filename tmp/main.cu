@@ -7,7 +7,6 @@
 #include <type_traits>
 
 #include "cuda/kernels/02_sort.cuh"
-#include "cuda/unified_vector.cuh"
 
 struct OneSweepHandler {
   // need to match the ".cu" file
