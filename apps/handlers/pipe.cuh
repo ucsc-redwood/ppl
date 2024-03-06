@@ -57,6 +57,13 @@ struct Pipe {
     ATTACH_STREAM_SINGLE(u_edge_offset);
   }
 
+  void attachStreamGlobal(const cudaStream_t stream) const {
+    ATTACH_STREAM_GLOBAL(u_points);
+    ATTACH_STREAM_GLOBAL(u_unique_keys);
+    ATTACH_STREAM_GLOBAL(u_edge_count);
+    ATTACH_STREAM_GLOBAL(u_edge_offset);
+  }
+
   void attachStreamHost(const cudaStream_t stream) const {
     ATTACH_STREAM_HOST(u_points);
     ATTACH_STREAM_HOST(u_unique_keys);

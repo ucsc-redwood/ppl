@@ -42,6 +42,7 @@ int main(const int argc, const char** argv) {
 
   const auto pipe = std::make_unique<Pipe>(
       params.n, params.min_coord, params.getRange(), params.seed);
+  pipe->attachStreamGlobal(streams[0]);
 
   for (auto i = 0; i < n_iterations; ++i) {
     gpu::v2::dispatch_Init(params.n_blocks, streams[0], *pipe);
