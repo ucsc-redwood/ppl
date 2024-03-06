@@ -139,11 +139,7 @@ int main(const int argc, const char* const argv[]) {
     n_iterations = std::strtol(argv[2], nullptr, 10);
   }
 
-  int device = 0;
-  cudaDeviceProp prop;
-  CHECK_CUDA_CALL(cudaGetDeviceProperties(&prop, device));
-  std::cout << "Concurrent Managed Access: " << prop.concurrentManagedAccess
-            << '\n';
+  printDeviceProperties();
 
   std::cout << "Number of elements: " << n << '\n';
   std::cout << "Grid size: " << grid_size << '\n';
@@ -160,7 +156,7 @@ int main(const int argc, const char* const argv[]) {
   CHECK_CUDA_CALL(cudaEventCreate(&start));
   CHECK_CUDA_CALL(cudaEventCreate(&stop));
 
-  WarmUpGPU();
+  warmUpGPU();
 
   CHECK_CUDA_CALL(cudaEventRecord(start, stream));
 

@@ -56,7 +56,22 @@ template <typename T, typename Alloc>
 
 __global__ void emptyKernel() {}
 
-inline void WarmUpGPU() {
+inline void warmUpGPU() {
   emptyKernel<<<1, 1>>>();
   SYNC_DEVICE();
+}
+
+inline void printDeviceProperties() {
+  int deviceCount;
+  CHECK_CUDA_CALL(cudaGetDeviceCount(&deviceCount));
+  for (int dev = 0; dev < deviceCount; ++dev) {
+    cudaDeviceProp deviceProp;
+    CHECK_CUDA_CALL(cudaGetDeviceProperties(&deviceProp, dev));
+    printf("Device %d has compute capability %d.%d.\n",
+           dev,
+           deviceProp.major,
+           deviceProp.minor);
+    printf("Concurrent Managed Access: %d\n",
+           deviceProp.concurrentManagedAccess);
+  }
 }
