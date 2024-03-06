@@ -3,11 +3,17 @@
 #include <glm/glm.hpp>
 
 #include "kernels_fwd.h"
+#include "octree.cuh"
 #include "one_sweep.cuh"
 #include "radix_tree.cuh"
 #include "unique.cuh"
 
 struct Pipe {
+  // allocate 60% of input size for Octree nodes.
+  // From my experiments, the number of octree nodes 45-49% of the number of the
+  // input size. Thus, 60% is a safe bet.
+  static constexpr auto EDUCATED_GUESS = 0.6;
+
   const size_t n;
   size_t n_unique_keys;
   size_t n_brt_nodes;
@@ -27,6 +33,7 @@ struct Pipe {
   RadixTree brt;         // tree Nodes (SoA) ...
   int* u_edge_count;
   int* u_edge_offset;
+  OctreeHandler oct;
 
   // ------------------------
   Pipe() = delete;
@@ -36,12 +43,17 @@ struct Pipe {
         sort(n),
         unique(n),
         brt(n),
+        oct(n * EDUCATED_GUESS),
         min_coord(min_coord),
         range(range),
         seed(seed) {
     MALLOC_MANAGED(&u_points, n);
     MALLOC_MANAGED(&u_edge_count, n);
     MALLOC_MANAGED(&u_edge_offset, n);
+
+    SYNC_DEVICE();
+
+    spdlog::trace("On constructor: Pipe, n: {}", n);
   }
 
   Pipe(const Pipe&) = delete;
@@ -53,6 +65,8 @@ struct Pipe {
     CUDA_FREE(u_points);
     CUDA_FREE(u_edge_count);
     CUDA_FREE(u_edge_offset);
+
+    spdlog::trace("On destructor: Pipe");
   }
 
   void attachStreamSingle(const cudaStream_t stream) const {

@@ -2,7 +2,6 @@
 #include <spdlog/spdlog.h>
 
 #include "app_params.hpp"
-// #include "baselines.h"
 #include "handlers/pipe.cuh"
 #include "kernels_fwd.h"
 
@@ -33,7 +32,30 @@ void runAllStagesOnGpu(const AppParams& params,
   // const auto n_unique = pipe->attemptGetNumOctNodes();
   const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() - 1];
 
+  gpu::v2::dispatch_BuildOctree(params.n_blocks,
+                                stream,
+                                pipe->brt,
+                                pipe->sort.data(),
+                                pipe->u_edge_offset,
+                                pipe->u_edge_count,
+                                pipe->oct,
+                                params.min_coord,
+                                params.getRange());
+
+  gpu::v2::dispatch_LinkOctreeNodes(params.n_blocks,
+                                    stream,
+                                    pipe->u_edge_offset,
+                                    pipe->u_edge_count,
+                                    pipe->sort.data(),
+                                    pipe->brt,
+                                    pipe->oct);
+
   SYNC_STREAM(stream);
+
+  // // peek 10 oct nodes
+  // for (auto i = 0; i < 10; ++i) {
+  //   spdlog::trace("oct node[{}]: {}", i, pipe->oct.u_children[i][0]);
+  // }
 
   // spdlog::info("Unique keys: {}/{} ({}%)",
   //              n_unique,

@@ -96,5 +96,6 @@ static void dispatch_BuildRadixTree(const int grid_size,
       radix_tree.u_left_child,
       radix_tree.u_parent);
 }
+
 }  // namespace v2
 }  // namespace gpu
