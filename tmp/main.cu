@@ -48,6 +48,7 @@ struct OneSweepHandler {
     MALLOC_MANAGED(&im_storage.u_second_pass_histogram, RADIX * num_parts);
     MALLOC_MANAGED(&im_storage.u_third_pass_histogram, RADIX * num_parts);
     MALLOC_MANAGED(&im_storage.u_fourth_pass_histogram, RADIX * num_parts);
+    SYNC_DEVICE();
   }
 
   OneSweepHandler(const OneSweepHandler&) = delete;
@@ -85,6 +86,7 @@ struct OneSweepHandler {
     ATTACH_STREAM_SINGLE(im_storage.u_second_pass_histogram);
     ATTACH_STREAM_SINGLE(im_storage.u_third_pass_histogram);
     ATTACH_STREAM_SINGLE(im_storage.u_fourth_pass_histogram);
+    SYNC_STREAM(stream);
   }
 
   void memoryUsage() const {
@@ -107,19 +109,70 @@ struct OneSweepHandler {
               << (temp / (essential + temp)) * 100.0 << "%)" << std::endl;
   }
 
-  void clearMem() const {
-    SET_MEM_2_ZERO(im_storage.u_global_histogram, RADIX * RADIX_PASSES);
-    SET_MEM_2_ZERO(im_storage.u_index, RADIX_PASSES);
+  void debug_remakeMemory() {
+    CUDA_FREE(u_sort);
+    CUDA_FREE(im_storage.u_sort_alt);
+    CUDA_FREE(im_storage.u_global_histogram);
+    CUDA_FREE(im_storage.u_index);
+    CUDA_FREE(im_storage.u_first_pass_histogram);
+    CUDA_FREE(im_storage.u_second_pass_histogram);
+    CUDA_FREE(im_storage.u_third_pass_histogram);
+    CUDA_FREE(im_storage.u_fourth_pass_histogram);
 
+    MALLOC_MANAGED(&u_sort, n);
+    MALLOC_MANAGED(&im_storage.u_sort_alt, n);
+    MALLOC_MANAGED(&im_storage.u_global_histogram, RADIX * RADIX_PASSES);
+    MALLOC_MANAGED(&im_storage.u_index, RADIX_PASSES);
     const auto num_parts = cub::DivideAndRoundUp(n, BIN_PART_SIZE);
-    SET_MEM_2_ZERO(im_storage.u_first_pass_histogram, RADIX * num_parts);
-    SET_MEM_2_ZERO(im_storage.u_second_pass_histogram, RADIX * num_parts);
-    SET_MEM_2_ZERO(im_storage.u_third_pass_histogram, RADIX * num_parts);
-    SET_MEM_2_ZERO(im_storage.u_fourth_pass_histogram, RADIX * num_parts);
+    MALLOC_MANAGED(&im_storage.u_first_pass_histogram, RADIX * num_parts);
+    MALLOC_MANAGED(&im_storage.u_second_pass_histogram, RADIX * num_parts);
+    MALLOC_MANAGED(&im_storage.u_third_pass_histogram, RADIX * num_parts);
+    MALLOC_MANAGED(&im_storage.u_fourth_pass_histogram, RADIX * num_parts);
+
+    SYNC_DEVICE();
+  }
+
+  void clearMem() const {
+    // // use std::memset
+    // std::memset(im_storage.u_global_histogram,
+    //             0,
+    //             RADIX * RADIX_PASSES * sizeof(unsigned int));
+    // std::memset(im_storage.u_index, 0, RADIX_PASSES * sizeof(unsigned int));
+    // std::memset(im_storage.u_first_pass_histogram,
+    //             0,
+    //             RADIX * BIN_PARTS * sizeof(unsigned int));
+    // std::memset(im_storage.u_second_pass_histogram,
+    //             0,
+    //             RADIX * BIN_PARTS * sizeof(unsigned int));
+    // std::memset(im_storage.u_third_pass_histogram,
+    //             0,
+    //             RADIX * BIN_PARTS * sizeof(unsigned int));
+    // std::memset(im_storage.u_fourth_pass_histogram,
+    //             0,
+    //             RADIX * BIN_PARTS * sizeof(unsigned int));
+
+    // SET_MEM_2_ZERO(im_storage.u_global_histogram, RADIX * RADIX_PASSES);
+    // SET_MEM_2_ZERO(im_storage.u_index, RADIX_PASSES);
+
+    // const auto num_parts = cub::DivideAndRoundUp(n, BIN_PART_SIZE);
+    // SET_MEM_2_ZERO(im_storage.u_first_pass_histogram, RADIX * num_parts);
+    // SET_MEM_2_ZERO(im_storage.u_second_pass_histogram, RADIX * num_parts);
+    // SET_MEM_2_ZERO(im_storage.u_third_pass_histogram, RADIX * num_parts);
+    // SET_MEM_2_ZERO(im_storage.u_fourth_pass_histogram, RADIX * num_parts);
   }
 };
 
+// __global__ void k_ClearMemory(float* u_test, n) {
+//   const auto idx = blockIdx.x * blockDim.x + threadIdx.x;
+//   const auto stride = gridDim.x * blockDim.x;
+//   for (auto i = idx; i < n; i += stride) {
+//     u_test[i] = 0;
+//   }
+// }
+
 int main(const int argc, const char* const argv[]) {
+  static_assert(sizeof(unsigned int) == 4, "sizeof(unsigned int) != 4");
+
   constexpr int n = 1 << 20;  // 1M elements
 
   auto grid_size = 1;
@@ -152,7 +205,9 @@ int main(const int argc, const char* const argv[]) {
   CHECK_CUDA_CALL(cudaEventRecord(start, stream));
 
   for (auto i = 0; i < n_iterations; ++i) {
-    handler->clearMem();
+    // handler->clearMem();
+    handler->debug_remakeMemory();
+    handler->attachStream(stream);
     SYNC_STREAM(stream);
 
     // input
