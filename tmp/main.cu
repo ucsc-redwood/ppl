@@ -108,31 +108,14 @@ struct OneSweepHandler {
   }
 
   void clearMem() const {
-    std::memset(im_storage.u_global_histogram,
-                0,
-                sizeof(unsigned int) * RADIX * RADIX_PASSES);
-    std::memset(im_storage.u_index, 0, sizeof(unsigned int) * RADIX_PASSES);
-    std::memset(im_storage.u_first_pass_histogram,
-                0,
-                sizeof(unsigned int) * RADIX * BIN_PARTS);
-    std::memset(im_storage.u_second_pass_histogram,
-                0,
-                sizeof(unsigned int) * RADIX * BIN_PARTS);
-    std::memset(im_storage.u_third_pass_histogram,
-                0,
-                sizeof(unsigned int) * RADIX * BIN_PARTS);
-    std::memset(im_storage.u_fourth_pass_histogram,
-                0,
-                sizeof(unsigned int) * RADIX * BIN_PARTS);
+    SET_MEM_2_ZERO(im_storage.u_global_histogram, RADIX * RADIX_PASSES);
+    SET_MEM_2_ZERO(im_storage.u_index, RADIX_PASSES);
 
-    // SET_MEM_2_ZERO(im_storage.u_global_histogram, RADIX * RADIX_PASSES);
-    // SET_MEM_2_ZERO(im_storage.u_index, RADIX_PASSES);
-
-    // const auto num_parts = cub::DivideAndRoundUp(n, BIN_PART_SIZE);
-    // SET_MEM_2_ZERO(im_storage.u_first_pass_histogram, RADIX * num_parts);
-    // SET_MEM_2_ZERO(im_storage.u_second_pass_histogram, RADIX * num_parts);
-    // SET_MEM_2_ZERO(im_storage.u_third_pass_histogram, RADIX * num_parts);
-    // SET_MEM_2_ZERO(im_storage.u_fourth_pass_histogram, RADIX * num_parts);
+    const auto num_parts = cub::DivideAndRoundUp(n, BIN_PART_SIZE);
+    SET_MEM_2_ZERO(im_storage.u_first_pass_histogram, RADIX * num_parts);
+    SET_MEM_2_ZERO(im_storage.u_second_pass_histogram, RADIX * num_parts);
+    SET_MEM_2_ZERO(im_storage.u_third_pass_histogram, RADIX * num_parts);
+    SET_MEM_2_ZERO(im_storage.u_fourth_pass_histogram, RADIX * num_parts);
   }
 };
 
@@ -176,9 +159,8 @@ int main(const int argc, const char* const argv[]) {
     std::generate(
         handler->begin(), handler->end(), [i = n]() mutable { return --i; });
 
-    // auto is_sorted = std::is_sorted(handler->begin(), handler->end());
-    // std::cout << "Is sorted (before): " << std::boolalpha << is_sorted <<
-    // '\n';
+    auto is_sorted = std::is_sorted(handler->begin(), handler->end());
+    std::cout << "Is sorted (before): " << std::boolalpha << is_sorted << '\n';
 
     // ------------------------------
     // handler->clearMem();
@@ -242,9 +224,8 @@ int main(const int argc, const char* const argv[]) {
     SYNC_STREAM(stream);
     // ------------------------------
 
-    // is_sorted = std::is_sorted(handler->begin(), handler->end());
-    // std::cout << "Is sorted (after): " << std::boolalpha << is_sorted <<
-    // '\n';
+    is_sorted = std::is_sorted(handler->begin(), handler->end());
+    std::cout << "Is sorted (after): " << std::boolalpha << is_sorted << '\n';
   }
 
   CHECK_CUDA_CALL(cudaEventRecord(stop, stream));
