@@ -9,6 +9,8 @@ add_requires("openmp", "glm")
 
 includes("apps")
 includes("ppl")
-includes("tests")
 
-includes("tmp")
+includes("tests")
+includes("benchmarks")
+
+-- includes("tmp")
