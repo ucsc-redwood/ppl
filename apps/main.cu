@@ -2,9 +2,9 @@
 #include <spdlog/spdlog.h>
 
 #include "app_params.hpp"
+#include "dispatcher.cuh"
 #include "handlers/pipe.cuh"
 #include "kernels_fwd.h"
-#include "dispatcher.cuh"
 
 void runAllStagesOnGpu(const AppParams& params,
                        const cudaStream_t stream,
@@ -35,20 +35,20 @@ void runAllStagesOnGpu(const AppParams& params,
 
   SYNC_STREAM(stream);
   // const auto n_unique = pipe->attemptGetNumOctNodes();
-  const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() - 1];
-
+  // const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() -
+  // 1];
 
   gpu::v2::dispatch_BuildOctree(params.n_blocks, stream, *pipe);
 
-  //gpu::v2::dispatch_BuildOctree(params.n_blocks,
-  //                              stream,
-  //                              pipe->brt,
-  //                              pipe->sort.data(),
-  //                              pipe->u_edge_offset,
-  //                              pipe->u_edge_count,
-  //                              pipe->oct,
-  //                              params.min_coord,
-  //                              params.getRange());
+  // gpu::v2::dispatch_BuildOctree(params.n_blocks,
+  //                               stream,
+  //                               pipe->brt,
+  //                               pipe->sort.data(),
+  //                               pipe->u_edge_offset,
+  //                               pipe->u_edge_count,
+  //                               pipe->oct,
+  //                               params.min_coord,
+  //                               params.getRange());
 
   // Temporary disable this kernel on Windows, as it's not working on Windows,
   // but it's working on Linux
@@ -79,13 +79,16 @@ void runAllStagesOnGpu(const AppParams& params,
 
   // merge the two spdlog calls, then set precision to 2 decimal places
 
-  spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
-               n_unique,
-               pipe->n,
-               100.0f * n_unique / pipe->n,
-               n_oct_nodes,
-               pipe->n,
-               100.0f * n_oct_nodes / pipe->n);
+  // const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() -
+  // 1];
+
+  // spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
+  //              n_unique,
+  //              pipe->n,
+  //              100.0f * n_unique / pipe->n,
+  //              n_oct_nodes,
+  //              pipe->n,
+  //              100.0f * n_oct_nodes / pipe->n);
 }
 
 // todo : fix this later
