@@ -1,7 +1,8 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <cuda_runtime_api.h>
+
+#include <glm/glm.hpp>
 
 namespace gpu {
 

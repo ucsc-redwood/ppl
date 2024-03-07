@@ -25,7 +25,7 @@
 // }
 //
 ///** @brief Dispatches the prefix sum computation. However, you need to
-///allocate
+/// allocate
 // * a temporary memory for the auxiliary data. The size of the auxiliary memory
 // * should be the size of a tile (# of threads X # of items per thread).
 // *
