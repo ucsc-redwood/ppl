@@ -1,5 +1,8 @@
 #pragma once
 
+#include <glm/glm.hpp>
+#include <cuda_runtime_api.h>
+
 namespace gpu {
 
 __global__ void k_MakeOctNodes(
