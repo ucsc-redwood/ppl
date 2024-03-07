@@ -1,9 +1,17 @@
+#include "cuda/kernels/07_octree.cuh"
 #include "dispatcher.cuh"
 
 void gpu::v2::dispatch_BuildOctree(const int grid_size,
                                    const cudaStream_t stream,
                                    const Pipe& pipe) {
   constexpr auto block_size = 512;
+
+  spdlog::debug(
+      "dispatching k_MakeOctNodes: grid_size: {}, block_size: {}, on {} num of "
+      "data",
+      grid_size,
+      block_size,
+      pipe.brt.getNumBrtNodes());
 
   k_MakeOctNodes<<<grid_size, block_size, 0, stream>>>(
       pipe.oct.u_children,
@@ -17,6 +25,13 @@ void gpu::v2::dispatch_BuildOctree(const int grid_size,
       pipe.brt.u_parent,
       pipe.min_coord,
       pipe.range,
+      pipe.brt.getNumBrtNodes());
+
+  spdlog::debug(
+      "dispatching k_LinkLeafNodes: grid_size: {}, block_size: {}, on {} num "
+      "of data",
+      grid_size,
+      block_size,
       pipe.brt.getNumBrtNodes());
 
   k_LinkLeafNodes<<<grid_size, block_size, 0, stream>>>(

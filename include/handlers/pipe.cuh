@@ -2,6 +2,9 @@
 
 #include <glm/glm.hpp>
 
+#include "cuda/kernels/01_morton.cuh"
+#include "cuda/kernels/05_edge_count.cuh"
+#include "cuda/kernels/06_prefix_sum.cuh"
 #include "kernels_fwd.h"
 #include "octree.cuh"
 #include "one_sweep.cuh"
@@ -94,21 +97,21 @@ struct Pipe {
 namespace gpu {
 namespace v2 {
 
-[[deprecated]] static void dispatch_Init(const int grid_size,
-                                         const cudaStream_t stream,
-                                         const Pipe& pipe) {
-  constexpr auto block_size = 512;
-
-  spdlog::debug(
-      "Dispatching k_InitRandomVec4 with ({} blocks, {} threads) "
-      "on {} items",
-      grid_size,
-      block_size,
-      pipe.n);
-
-  k_InitRandomVec4<<<grid_size, block_size, 0, stream>>>(
-      pipe.u_points, pipe.n, pipe.min_coord, pipe.range, pipe.seed);
-}
+//[[deprecated]] static void dispatch_Init(const int grid_size,
+//                                         const cudaStream_t stream,
+//                                         const Pipe& pipe) {
+//  constexpr auto block_size = 512;
+//
+//  spdlog::debug(
+//      "Dispatching k_InitRandomVec4 with ({} blocks, {} threads) "
+//      "on {} items",
+//      grid_size,
+//      block_size,
+//      pipe.n);
+//
+//  k_InitRandomVec4<<<grid_size, block_size, 0, stream>>>(
+//      pipe.u_points, pipe.n, pipe.min_coord, pipe.range, pipe.seed);
+//}
 
 static void dispatch_ComputeMorton(const int grid_size,
                                    const cudaStream_t stream,

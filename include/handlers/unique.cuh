@@ -1,6 +1,8 @@
 #pragma once
 
+#include "cuda/agents/unique_agent.cuh"
 #include "cuda/helper.cuh"
+#include "cuda/kernels/03_unique.cuh"
 
 struct UniqueHandler {
   // ------------------------

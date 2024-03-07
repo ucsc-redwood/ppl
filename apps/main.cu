@@ -79,16 +79,15 @@ void runAllStagesOnGpu(const AppParams& params,
 
   // merge the two spdlog calls, then set precision to 2 decimal places
 
-  // const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() -
-  // 1];
+  const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() - 1];
 
-  // spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
-  //              n_unique,
-  //              pipe->n,
-  //              100.0f * n_unique / pipe->n,
-  //              n_oct_nodes,
-  //              pipe->n,
-  //              100.0f * n_oct_nodes / pipe->n);
+  spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
+               n_unique,
+               pipe->n,
+               100.0f * n_unique / pipe->n,
+               n_oct_nodes,
+               pipe->n,
+               100.0f * n_oct_nodes / pipe->n);
 }
 
 // todo : fix this later
