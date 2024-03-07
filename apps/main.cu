@@ -6,13 +6,20 @@
 #include "handlers/pipe.cuh"
 #include "kernels_fwd.h"
 
+void runHetero(const AppParams& params,
+               const cudaStream_t stream,
+               const std::unique_ptr<Pipe>& pipe) {}
+
 void runAllStagesOnGpu(const AppParams& params,
                        const cudaStream_t stream,
                        const std::unique_ptr<Pipe>& pipe) {
   // CPU should handle input because this will be similar to the real
   // application. e.g., reading point cloud data from camera
-  cpu::k_InitRandomVec4(
-      pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
+  //cpu::k_InitRandomVec4(
+  //    pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
+
+
+  gpu::v2::dispatch_InitRandomVec4(params.n_blocks, stream, *pipe);
 
   gpu::v2::dispatch_ComputeMorton(params.n_blocks, stream, *pipe);
   gpu::v2::dispatch_RadixSort(params.n_blocks, stream, pipe->sort);
@@ -33,33 +40,7 @@ void runAllStagesOnGpu(const AppParams& params,
                                     pipe->u_edge_offset,
                                     pipe->brt.getNumBrtNodes());
 
-  SYNC_STREAM(stream);
-  // const auto n_unique = pipe->attemptGetNumOctNodes();
-  // const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() -
-  // 1];
-
   gpu::v2::dispatch_BuildOctree(params.n_blocks, stream, *pipe);
-
-  // gpu::v2::dispatch_BuildOctree(params.n_blocks,
-  //                               stream,
-  //                               pipe->brt,
-  //                               pipe->sort.data(),
-  //                               pipe->u_edge_offset,
-  //                               pipe->u_edge_count,
-  //                               pipe->oct,
-  //                               params.min_coord,
-  //                               params.getRange());
-
-  // Temporary disable this kernel on Windows, as it's not working on Windows,
-  // but it's working on Linux
-
-  // gpu::v2::dispatch_LinkOctreeNodes(params.n_blocks,
-  //                                   stream,
-  //                                   pipe->u_edge_offset,
-  //                                   pipe->u_edge_count,
-  //                                   pipe->sort.data(),
-  //                                   pipe->brt,
-  //                                   pipe->oct);
 
   SYNC_STREAM(stream);
 
@@ -68,19 +49,7 @@ void runAllStagesOnGpu(const AppParams& params,
   //   spdlog::trace("oct node[{}]: {}", i, pipe->oct.u_children[i][0]);
   // }
 
-  // spdlog::info("Unique keys: {}/{} ({}%)",
-  //              n_unique,
-  //              pipe->n,
-  //              100.0 * n_unique / pipe->n);
-  // spdlog::info("Oct nodes: {}/{} ({}%)",
-  //              n_oct_nodes,
-  //              pipe->n,
-  //              100.0 * n_oct_nodes / pipe->n);
-
-  // merge the two spdlog calls, then set precision to 2 decimal places
-
   const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() - 1];
-
   spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
                n_unique,
                pipe->n,
@@ -213,7 +182,7 @@ int main(const int argc, const char** argv) {
   { spdlog::debug("Hello from thread {}", omp_get_thread_num()); }
 
   // ------------------------------
-  constexpr auto n_streams = 1;
+  constexpr auto n_streams = 2;
   const auto n_iterations = params.n_iterations;
 
   std::array<cudaStream_t, n_streams> streams;
@@ -242,20 +211,19 @@ int main(const int argc, const char** argv) {
     spdlog::info("Total time: {} ms | Average time: {} ms",
                  elapsed.count(),
                  elapsed.count() / n_iterations);
-
   } else {
     cudaEvent_t start, stop;
     CHECK_CUDA_CALL(cudaEventCreate(&start));
     CHECK_CUDA_CALL(cudaEventCreate(&stop));
 
-    CHECK_CUDA_CALL(cudaEventRecord(start, 0));
+    CHECK_CUDA_CALL(cudaEventRecord(start, nullptr));
 
     for (auto i = 0; i < n_iterations; ++i) {
       ++pipe->seed;
       runAllStagesOnGpu(params, streams[0], pipe);
     }
 
-    CHECK_CUDA_CALL(cudaEventRecord(stop, 0));
+    CHECK_CUDA_CALL(cudaEventRecord(stop, nullptr));
     CHECK_CUDA_CALL(cudaEventSynchronize(stop));
 
     spdlog::set_level(spdlog::level::info);
