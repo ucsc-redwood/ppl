@@ -103,31 +103,6 @@ struct OneSweepHandler {
     SYNC_STREAM(stream);
   }
 
-  void memoryUsage() const {
-    const auto essential = CALC_MEM(u_sort, n);
-
-    auto temp = 0;
-    temp += CALC_MEM(im_storage.d_sort_alt, n);
-    temp += CALC_MEM(im_storage.d_global_histogram, RADIX * RADIX_PASSES);
-    temp += CALC_MEM(im_storage.d_index, RADIX_PASSES);
-    temp += CALC_MEM(im_storage.d_first_pass_histogram, RADIX * binning_blocks);
-    temp +=
-        CALC_MEM(im_storage.d_second_pass_histogram, RADIX * binning_blocks);
-    temp += CALC_MEM(im_storage.d_third_pass_histogram, RADIX * binning_blocks);
-    temp +=
-        CALC_MEM(im_storage.d_fourth_pass_histogram, RADIX * binning_blocks);
-
-    spdlog::info(
-        "Onesweep Total: {} MB (100.000%) Essential: {} MB ({}%) Temporary: {} "
-        "MB "
-        "({}%)",
-        (essential + temp) / 1024.0 / 1024.0,
-        essential / 1024.0 / 1024.0,
-        (essential / (essential + temp)) * 100.0,
-        temp / 1024.0 / 1024.0,
-        (temp / (essential + temp)) * 100.0);
-  }
-
   void clearMem() const {
     SET_MEM_2_ZERO(im_storage.d_global_histogram, RADIX * RADIX_PASSES);
     SET_MEM_2_ZERO(im_storage.d_index, RADIX_PASSES);
@@ -144,7 +119,7 @@ namespace v2 {
 
 static void dispatch_RadixSort(const int grid_size,
                                const cudaStream_t stream,
-                               OneSweepHandler& handler) {
+                               const OneSweepHandler& handler) {
   const auto n = handler.size();
 
   handler.clearMem();
@@ -154,7 +129,7 @@ static void dispatch_RadixSort(const int grid_size,
                 grid_size,
                 OneSweepHandler::GLOBAL_HIST_THREADS);
 
-  gpu::k_GlobalHistogram<<<grid_size,
+  k_GlobalHistogram<<<grid_size,
                            OneSweepHandler::GLOBAL_HIST_THREADS,
                            0,
                            stream>>>(
@@ -164,7 +139,7 @@ static void dispatch_RadixSort(const int grid_size,
                 OneSweepHandler::RADIX_PASSES,
                 OneSweepHandler::RADIX);
 
-  gpu::k_Scan<<<OneSweepHandler::RADIX_PASSES,
+  k_Scan<<<OneSweepHandler::RADIX_PASSES,
                 OneSweepHandler::RADIX,
                 0,
                 stream>>>(handler.im_storage.d_global_histogram,
@@ -178,7 +153,7 @@ static void dispatch_RadixSort(const int grid_size,
       grid_size,
       OneSweepHandler::BINNING_THREADS);
 
-  gpu::k_DigitBinningPass<<<grid_size,
+  k_DigitBinningPass<<<grid_size,
                             OneSweepHandler::BINNING_THREADS,
                             0,
                             stream>>>(handler.u_sort,  // <---
@@ -188,7 +163,7 @@ static void dispatch_RadixSort(const int grid_size,
                                       n,
                                       0);
 
-  gpu::k_DigitBinningPass<<<grid_size,
+  k_DigitBinningPass<<<grid_size,
                             OneSweepHandler::BINNING_THREADS,
                             0,
                             stream>>>(
@@ -199,7 +174,7 @@ static void dispatch_RadixSort(const int grid_size,
       n,
       8);
 
-  gpu::k_DigitBinningPass<<<grid_size,
+  k_DigitBinningPass<<<grid_size,
                             OneSweepHandler::BINNING_THREADS,
                             0,
                             stream>>>(handler.u_sort,  // <---
@@ -209,7 +184,7 @@ static void dispatch_RadixSort(const int grid_size,
                                       n,
                                       16);
 
-  gpu::k_DigitBinningPass<<<grid_size,
+  k_DigitBinningPass<<<grid_size,
                             OneSweepHandler::BINNING_THREADS,
                             0,
                             stream>>>(

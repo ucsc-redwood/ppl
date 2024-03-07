@@ -6,10 +6,6 @@
 #include "device_launch_parameters.h"
 
 // General macros
-// #define LANE_COUNT 32                         // Threads in a warp
-// #define LANE_MASK 31                          // Mask of the lane count
-// #define LANE_LOG 5                            // log2(LANE_COUNT)
-
 constexpr auto LANE_COUNT = 32;
 constexpr auto LANE_MASK = LANE_COUNT - 1;
 constexpr auto LANE_LOG = 5;

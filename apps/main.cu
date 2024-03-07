@@ -42,13 +42,15 @@ void runAllStagesOnGpu(const AppParams& params,
                                 params.min_coord,
                                 params.getRange());
 
-  gpu::v2::dispatch_LinkOctreeNodes(params.n_blocks,
-                                    stream,
-                                    pipe->u_edge_offset,
-                                    pipe->u_edge_count,
-                                    pipe->sort.data(),
-                                    pipe->brt,
-                                    pipe->oct);
+  // Temporary disable this kernel on Windows, as it's not working on Windows, but it's working on Linux
+
+  //gpu::v2::dispatch_LinkOctreeNodes(params.n_blocks,
+  //                                  stream,
+  //                                  pipe->u_edge_offset,
+  //                                  pipe->u_edge_count,
+  //                                  pipe->sort.data(),
+  //                                  pipe->brt,
+  //                                  pipe->oct);
 
   SYNC_STREAM(stream);
 
@@ -212,27 +214,27 @@ int main(const int argc, const char** argv) {
       params.n, params.min_coord, params.getRange(), params.seed);
   pipe->attachStreamGlobal(streams[0]);
 
-  cudaEvent_t start, stop;
 
   if (params.use_cpu) {
-    auto start = std::chrono::high_resolution_clock::now();
+    const auto start = std::chrono::high_resolution_clock::now();
 
     for (auto i = 0; i < n_iterations; ++i) {
       ++pipe->seed;
       runAllStagesOnCpu(params, pipe);
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
+    const auto end = std::chrono::high_resolution_clock::now();
 
     spdlog::set_level(spdlog::level::info);
 
     // print in milliseconds
-    std::chrono::duration<double, std::milli> elapsed = end - start;
+    const std::chrono::duration<double, std::milli> elapsed = end - start;
     spdlog::info("Total time: {} ms | Average time: {} ms",
                  elapsed.count(),
                  elapsed.count() / n_iterations);
 
   } else {
+    cudaEvent_t start, stop;
     CHECK_CUDA_CALL(cudaEventCreate(&start));
     CHECK_CUDA_CALL(cudaEventCreate(&stop));
 
