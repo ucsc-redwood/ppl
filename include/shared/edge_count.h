@@ -15,4 +15,4 @@ H_D_I void processEdgeCount(int i,
   edge_count[i] = my_depth - parent_depth;
 }
 
-}
+}  // namespace shared

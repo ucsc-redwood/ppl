@@ -1,4 +1,4 @@
-# Shared Code Between CPU and GPU
+#Shared Code Between CPU and GPU
 
 There are some functions that can be used for both CPU and GPU. They process on input data, and is procedural. Can describe the algorithm. They are executed the same way.
 

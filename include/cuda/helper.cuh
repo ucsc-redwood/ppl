@@ -42,7 +42,6 @@ constexpr void mallocDevice(T **ptr, const size_t num_items) {
 
 namespace cu {
 
-
 template <typename T>
 [[nodiscard]] size_t calcMem([[maybe_unused]] T *t, const size_t n) {
   return sizeof(T) * n;
@@ -53,10 +52,9 @@ void clearMem(T *t, const size_t n) {
   CHECK_CUDA_CALL(cudaMemset(t, 0, calcMem(t, n)));
 }
 
-}
+}  // namespace cu
 
-
-//#define CALC_MEM(ptr, n) (sizeof(std::remove_pointer_t<decltype(ptr)>) * n)
+// #define CALC_MEM(ptr, n) (sizeof(std::remove_pointer_t<decltype(ptr)>) * n)
 //
 #define SET_MEM_2_ZERO(ptr, item_count) \
   CHECK_CUDA_CALL(cudaMemsetAsync(      \

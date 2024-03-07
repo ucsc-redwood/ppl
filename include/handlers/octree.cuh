@@ -85,15 +85,15 @@ struct OctreeHandler {
 namespace gpu {
 namespace v2 {
 
-void dispatch_BuildOctree(const int grid_size,
-                          const cudaStream_t stream,
-                          const RadixTree& brt,
-                          const unsigned int* u_sorted_keys,
-                          const int* u_edge_offset,
-                          const int* u_edge_count,
-                          OctreeHandler& oct,
-                          const float min_coord,
-                          const float range) {
+static void dispatch_BuildOctree(const int grid_size,
+                                 const cudaStream_t stream,
+                                 const RadixTree& brt,
+                                 const unsigned int* u_sorted_keys,
+                                 const int* u_edge_offset,
+                                 const int* u_edge_count,
+                                 OctreeHandler& oct,
+                                 const float min_coord,
+                                 const float range) {
   constexpr auto block_size = 512;
 
   spdlog::debug(
@@ -144,18 +144,6 @@ static void dispatch_LinkOctreeNodes(const int grid_size,
                                                         brt.u_parent,
                                                         brt.u_left_child,
                                                         brt.getNumBrtNodes());
-
-  // k_LinkLeafNodes<<<grid_size, block_size, 0, stream>>>(u_children,
-  //                                                       u_child_leaf_mask,
-  //                                                       node_offsets,
-  //                                                       node_counts,
-  //                                                       codes,
-  //                                                       rt_hasLeafLeft,
-  //                                                       rt_hasLeafRight,
-  //                                                       rt_prefixN,
-  //                                                       rt_parents,
-  //                                                       rt_leftChild,
-  //                                                       n_brt_nodes);
 }
 
 }  // namespace v2

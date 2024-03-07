@@ -4,11 +4,16 @@
 #include "app_params.hpp"
 #include "handlers/pipe.cuh"
 #include "kernels_fwd.h"
+#include "dispatcher.cuh"
 
 void runAllStagesOnGpu(const AppParams& params,
                        const cudaStream_t stream,
                        const std::unique_ptr<Pipe>& pipe) {
-  gpu::v2::dispatch_Init(params.n_blocks, stream, *pipe);
+  // CPU should handle input because this will be similar to the real
+  // application. e.g., reading point cloud data from camera
+  cpu::k_InitRandomVec4(
+      pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
+
   gpu::v2::dispatch_ComputeMorton(params.n_blocks, stream, *pipe);
   gpu::v2::dispatch_RadixSort(params.n_blocks, stream, pipe->sort);
   gpu::v2::dispatch_RemoveDuplicates(
@@ -32,25 +37,29 @@ void runAllStagesOnGpu(const AppParams& params,
   // const auto n_unique = pipe->attemptGetNumOctNodes();
   const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() - 1];
 
-  gpu::v2::dispatch_BuildOctree(params.n_blocks,
-                                stream,
-                                pipe->brt,
-                                pipe->sort.data(),
-                                pipe->u_edge_offset,
-                                pipe->u_edge_count,
-                                pipe->oct,
-                                params.min_coord,
-                                params.getRange());
 
-  // Temporary disable this kernel on Windows, as it's not working on Windows, but it's working on Linux
+  gpu::v2::dispatch_BuildOctree(params.n_blocks, stream, *pipe);
 
-  //gpu::v2::dispatch_LinkOctreeNodes(params.n_blocks,
-  //                                  stream,
-  //                                  pipe->u_edge_offset,
-  //                                  pipe->u_edge_count,
-  //                                  pipe->sort.data(),
-  //                                  pipe->brt,
-  //                                  pipe->oct);
+  //gpu::v2::dispatch_BuildOctree(params.n_blocks,
+  //                              stream,
+  //                              pipe->brt,
+  //                              pipe->sort.data(),
+  //                              pipe->u_edge_offset,
+  //                              pipe->u_edge_count,
+  //                              pipe->oct,
+  //                              params.min_coord,
+  //                              params.getRange());
+
+  // Temporary disable this kernel on Windows, as it's not working on Windows,
+  // but it's working on Linux
+
+  // gpu::v2::dispatch_LinkOctreeNodes(params.n_blocks,
+  //                                   stream,
+  //                                   pipe->u_edge_offset,
+  //                                   pipe->u_edge_count,
+  //                                   pipe->sort.data(),
+  //                                   pipe->brt,
+  //                                   pipe->oct);
 
   SYNC_STREAM(stream);
 
@@ -213,7 +222,6 @@ int main(const int argc, const char** argv) {
   const auto pipe = std::make_unique<Pipe>(
       params.n, params.min_coord, params.getRange(), params.seed);
   pipe->attachStreamGlobal(streams[0]);
-
 
   if (params.use_cpu) {
     const auto start = std::chrono::high_resolution_clock::now();

@@ -26,7 +26,6 @@ struct OneSweepHandler {
 
   // ------------------------
 
-
   struct _IntermediateStorage {
     unsigned int* d_sort_alt;
     unsigned int* d_global_histogram;
@@ -130,23 +129,21 @@ static void dispatch_RadixSort(const int grid_size,
                 OneSweepHandler::GLOBAL_HIST_THREADS);
 
   k_GlobalHistogram<<<grid_size,
-                           OneSweepHandler::GLOBAL_HIST_THREADS,
-                           0,
-                           stream>>>(
+                      OneSweepHandler::GLOBAL_HIST_THREADS,
+                      0,
+                      stream>>>(
       handler.u_sort, handler.im_storage.d_global_histogram, n);
 
   spdlog::debug("Dispatching k_Scan, grid_size: {}, block_size: {}",
                 OneSweepHandler::RADIX_PASSES,
                 OneSweepHandler::RADIX);
 
-  k_Scan<<<OneSweepHandler::RADIX_PASSES,
-                OneSweepHandler::RADIX,
-                0,
-                stream>>>(handler.im_storage.d_global_histogram,
-                          handler.im_storage.d_first_pass_histogram,
-                          handler.im_storage.d_second_pass_histogram,
-                          handler.im_storage.d_third_pass_histogram,
-                          handler.im_storage.d_fourth_pass_histogram);
+  k_Scan<<<OneSweepHandler::RADIX_PASSES, OneSweepHandler::RADIX, 0, stream>>>(
+      handler.im_storage.d_global_histogram,
+      handler.im_storage.d_first_pass_histogram,
+      handler.im_storage.d_second_pass_histogram,
+      handler.im_storage.d_third_pass_histogram,
+      handler.im_storage.d_fourth_pass_histogram);
 
   spdlog::debug(
       "Dispatching k_DigitBinningPass, grid_size: {}, block_size: {} ... x4",
@@ -154,46 +151,44 @@ static void dispatch_RadixSort(const int grid_size,
       OneSweepHandler::BINNING_THREADS);
 
   k_DigitBinningPass<<<grid_size,
-                            OneSweepHandler::BINNING_THREADS,
-                            0,
-                            stream>>>(handler.u_sort,  // <---
-                                      handler.im_storage.d_sort_alt,
-                                      handler.im_storage.d_first_pass_histogram,
-                                      handler.im_storage.d_index,
-                                      n,
-                                      0);
+                       OneSweepHandler::BINNING_THREADS,
+                       0,
+                       stream>>>(handler.u_sort,  // <---
+                                 handler.im_storage.d_sort_alt,
+                                 handler.im_storage.d_first_pass_histogram,
+                                 handler.im_storage.d_index,
+                                 n,
+                                 0);
 
   k_DigitBinningPass<<<grid_size,
-                            OneSweepHandler::BINNING_THREADS,
-                            0,
-                            stream>>>(
-      handler.im_storage.d_sort_alt,
-      handler.u_sort,  // <---
-      handler.im_storage.d_second_pass_histogram,
-      handler.im_storage.d_index,
-      n,
-      8);
+                       OneSweepHandler::BINNING_THREADS,
+                       0,
+                       stream>>>(handler.im_storage.d_sort_alt,
+                                 handler.u_sort,  // <---
+                                 handler.im_storage.d_second_pass_histogram,
+                                 handler.im_storage.d_index,
+                                 n,
+                                 8);
 
   k_DigitBinningPass<<<grid_size,
-                            OneSweepHandler::BINNING_THREADS,
-                            0,
-                            stream>>>(handler.u_sort,  // <---
-                                      handler.im_storage.d_sort_alt,
-                                      handler.im_storage.d_third_pass_histogram,
-                                      handler.im_storage.d_index,
-                                      n,
-                                      16);
+                       OneSweepHandler::BINNING_THREADS,
+                       0,
+                       stream>>>(handler.u_sort,  // <---
+                                 handler.im_storage.d_sort_alt,
+                                 handler.im_storage.d_third_pass_histogram,
+                                 handler.im_storage.d_index,
+                                 n,
+                                 16);
 
   k_DigitBinningPass<<<grid_size,
-                            OneSweepHandler::BINNING_THREADS,
-                            0,
-                            stream>>>(
-      handler.im_storage.d_sort_alt,
-      handler.u_sort,  // <---
-      handler.im_storage.d_fourth_pass_histogram,
-      handler.im_storage.d_index,
-      n,
-      24);
+                       OneSweepHandler::BINNING_THREADS,
+                       0,
+                       stream>>>(handler.im_storage.d_sort_alt,
+                                 handler.u_sort,  // <---
+                                 handler.im_storage.d_fourth_pass_histogram,
+                                 handler.im_storage.d_index,
+                                 n,
+                                 24);
 }
 }  // namespace v2
 

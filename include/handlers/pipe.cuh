@@ -38,15 +38,18 @@ struct Pipe {
   // ------------------------
   Pipe() = delete;
 
-  explicit Pipe(const size_t n, float min_coord, float range, float seed)
+  explicit Pipe(const size_t n,
+                const float min_coord,
+                const float range,
+                const float seed)
       : n(n),
+        min_coord(min_coord),
+        range(range),
+        seed(seed),
         sort(n),
         unique(n),
         brt(n),
-        oct(n * EDUCATED_GUESS),
-        min_coord(min_coord),
-        range(range),
-        seed(seed) {
+        oct(static_cast<size_t>(static_cast<double>(n) * EDUCATED_GUESS)) {
     MALLOC_MANAGED(&u_points, n);
     MALLOC_MANAGED(&u_edge_count, n);
     MALLOC_MANAGED(&u_edge_offset, n);
@@ -91,9 +94,9 @@ struct Pipe {
 namespace gpu {
 namespace v2 {
 
-static void dispatch_Init(const int grid_size,
-                          const cudaStream_t stream,
-                          Pipe& pipe) {
+[[deprecated]] static void dispatch_Init(const int grid_size,
+                                         const cudaStream_t stream,
+                                         const Pipe& pipe) {
   constexpr auto block_size = 512;
 
   spdlog::debug(
@@ -103,7 +106,7 @@ static void dispatch_Init(const int grid_size,
       block_size,
       pipe.n);
 
-  gpu::k_InitRandomVec4<<<grid_size, block_size, 0, stream>>>(
+  k_InitRandomVec4<<<grid_size, block_size, 0, stream>>>(
       pipe.u_points, pipe.n, pipe.min_coord, pipe.range, pipe.seed);
 }
 
@@ -120,7 +123,7 @@ static void dispatch_ComputeMorton(const int grid_size,
       block_size,
       pipe.n);
 
-  gpu::k_ComputeMortonCode<<<grid_size, block_size, 0, stream>>>(
+  k_ComputeMortonCode<<<grid_size, block_size, 0, stream>>>(
       pipe.u_points, pipe.sort.data(), pipe.n, pipe.min_coord, pipe.range);
 }
 
@@ -137,11 +140,11 @@ static void dispatch_EdgeCount(const int grid_size,
       block_size,
       brt.getNumBrtNodes());
 
-  gpu::k_EdgeCount<<<grid_size, block_size, 0, stream>>>(
+  k_EdgeCount<<<grid_size, block_size, 0, stream>>>(
       brt.u_prefix_n, brt.u_parent, edge_count, brt.getNumBrtNodes());
 }
 
-static void dispatch_EdgeOffset_safe(const int grid_size,
+static void dispatch_EdgeOffset_safe([[maybe_unused]] const int grid_size,
                                      const cudaStream_t stream,
                                      const int* edge_count,
                                      int* edge_offset,
@@ -153,7 +156,7 @@ static void dispatch_EdgeOffset_safe(const int grid_size,
       "threads)",
       n_threads);
 
-  gpu::k_SingleBlockExclusiveScan<<<1, n_threads, 0, stream>>>(
+  k_SingleBlockExclusiveScan<<<1, n_threads, 0, stream>>>(
       edge_count, edge_offset, n_brt_nodes);
 }
 
