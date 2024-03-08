@@ -6,7 +6,7 @@
 #include "device_launch_parameters.h"
 
 // General macros
-constexpr auto LANE_COUNT = 32;
+constexpr auto LANE_COUNT = 32;  // warp size
 constexpr auto LANE_MASK = LANE_COUNT - 1;
 constexpr auto LANE_LOG = 5;
 #define WARP_INDEX (threadIdx.x >> LANE_LOG)  // Warp of a thread

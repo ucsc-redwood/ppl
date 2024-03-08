@@ -43,35 +43,46 @@
 namespace gpu {
 
 // Number of digit bins
-#define RADIX 256
-// Mask of digit bins, to extract digits
-#define RADIX_MASK 255
-// log2(RADIX)
-#define RADIX_LOG 8
+constexpr auto RADIX = 256;
+constexpr auto RADIX_MASK = RADIX - 1;
+constexpr auto RADIX_LOG = 8;
 
-#define SEC_RADIX_START 256
-#define THIRD_RADIX_START 512
-#define FOURTH_RADIX_START 768
+constexpr auto SEC_RADIX_START = 1 * RADIX;     // 256
+constexpr auto THIRD_RADIX_START = 2 * RADIX;   // 512
+constexpr auto FOURTH_RADIX_START = 3 * RADIX;  // 768
 
 // For the upfront global histogram kernel
-#define G_HIST_PART_SIZE 65536
-#define G_HIST_VEC_SIZE 16384
+// #define G_HIST_PART_SIZE 65536
+// #define G_HIST_VEC_SIZE 16384
+
+constexpr auto G_HIST_PART_SIZE = 65536;
+constexpr auto G_HIST_VEC_SIZE = 16384;
 
 // For the digit binning
 // Partition tile size in k_DigitBinning
-#define BIN_PART_SIZE 7680
+
+// #define BIN_PART_SIZE 7680
+
+// looks like we use 512 threads per block, and 15 items per thread, so 7680
+constexpr auto BIN_WARPS = 512 / LANE_COUNT;  // 16;
+constexpr auto BIN_KEYS_PER_THREAD = 15;
+constexpr auto BIN_SUB_PART_SIZE = BIN_KEYS_PER_THREAD * LANE_COUNT;  // 480;
+
+constexpr auto BIN_PART_SIZE = 512 * BIN_KEYS_PER_THREAD;  // 7680;
+
 // Total size of warp histograms in shared memory in k_DigitBinning
-#define BIN_HISTS_SIZE 4096
+// #define BIN_HISTS_SIZE 4096
+constexpr auto BIN_HISTS_SIZE = 4096;
+
 // Subpartition tile size of a single warp in k_DigitBinning
-#define BIN_SUB_PART_SIZE 480
+// #define BIN_SUB_PART_SIZE 480
 
 // Warps per threadblock in k_DigitBinning
-#define BIN_WARPS 16
 // Keys per thread in k_DigitBinning
-#define BIN_KEYS_PER_THREAD 15
 
 // Starting offset of a subpartition tile
 #define BIN_SUB_PART_START (WARP_INDEX * BIN_SUB_PART_SIZE)
+
 // Starting offset of a partition tile
 #define BIN_PART_START (partitionIndex * BIN_PART_SIZE)
 
@@ -85,7 +96,7 @@ namespace gpu {
 #define FLAG_INCLUSIVE 2
 #define FLAG_MASK 3
 
-__global__ void k_GlobalHistogram(unsigned int* sort,
+__global__ void k_GlobalHistogram(const unsigned int* sort,
                                   unsigned int* global_histogram,
                                   const unsigned int size) {
   __shared__ unsigned int s_globalHistFirst[RADIX * 2];
@@ -122,7 +133,7 @@ __global__ void k_GlobalHistogram(unsigned int* sort,
         for (unsigned int i = threadIdx.x + (yanwen_block_id * G_HIST_VEC_SIZE);
              i < partEnd;
              i += blockDim.x) {
-          uint4 t[1] = {reinterpret_cast<uint4*>(sort)[i]};
+          uint4 t[1] = {reinterpret_cast<const uint4*>(sort)[i]};
 
           atomicAdd(&s_wavesHistFirst[reinterpret_cast<uint8_t*>(t)[0]], 1);
           atomicAdd(&s_wavesHistSec[reinterpret_cast<uint8_t*>(t)[1]], 1);
@@ -176,7 +187,7 @@ __global__ void k_GlobalHistogram(unsigned int* sort,
 }
 
 // fixed to use 4 blocks, and 'radix' (256) threads
-__global__ void k_Scan(unsigned int* globalHistogram,
+__global__ void k_Scan(const unsigned int* globalHistogram,
                        unsigned int* firstPassHistogram,
                        unsigned int* secPassHistogram,
                        unsigned int* thirdPassHistogram,
@@ -233,7 +244,7 @@ __global__ void k_Scan(unsigned int* globalHistogram,
 namespace backup {
 
 __global__ void k_DigitBinningPass_Original(
-    unsigned int* sort,
+    const unsigned int* sort,
     unsigned int* alt,
     volatile unsigned int* passHistogram,
     volatile unsigned int* index,
