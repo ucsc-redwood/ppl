@@ -2,9 +2,6 @@
 
 #include <glm/glm.hpp>
 
-#include "cuda/kernels/01_morton.cuh"
-#include "cuda/kernels/05_edge_count.cuh"
-#include "cuda/kernels/06_prefix_sum.cuh"
 #include "kernels_fwd.h"
 #include "octree.cuh"
 #include "one_sweep.cuh"
@@ -39,6 +36,7 @@ struct Pipe {
   OctreeHandler oct;
 
   // ------------------------
+
   Pipe() = delete;
 
   explicit Pipe(const size_t n,
@@ -46,6 +44,9 @@ struct Pipe {
                 const float range,
                 const float seed)
       : n(n),
+        n_unique_keys(),
+        n_brt_nodes(),
+        n_oct_nodes(),
         min_coord(min_coord),
         range(range),
         seed(seed),
@@ -75,6 +76,26 @@ struct Pipe {
     spdlog::trace("On destructor: Pipe");
   }
 
+  // ------------------------
+  // Preferred Getter
+  // ------------------------
+
+  [[nodiscard]] size_t getInputSize() const { return n; }
+  [[nodiscard]] size_t getUniqueSize() const { return n_unique_keys; }
+  [[nodiscard]] size_t getBrtSize() const { return n_brt_nodes; }
+  [[nodiscard]] size_t getOctSize() const { return n_oct_nodes; }
+
+  [[nodiscard]] const unsigned int* getSortedKeys() const {
+    return sort.u_sort;
+  }
+  [[nodiscard]] const unsigned int* getUniqueKeys() const {
+    return unique.u_keys_out;
+  }
+  [[nodiscard]] const int* getEdgeCount() const { return u_edge_count; }
+  [[nodiscard]] const int* getEdgeOffset() const { return u_edge_offset; }
+
+  // ------------------------
+
   void attachStreamSingle(const cudaStream_t stream) const {
     ATTACH_STREAM_SINGLE(u_points);
     ATTACH_STREAM_SINGLE(u_edge_count);
@@ -93,75 +114,3 @@ struct Pipe {
     ATTACH_STREAM_HOST(u_edge_offset);
   }
 };
-
-namespace gpu {
-namespace v2 {
-
-//[[deprecated]] static void dispatch_Init(const int grid_size,
-//                                         const cudaStream_t stream,
-//                                         const Pipe& pipe) {
-//  constexpr auto block_size = 512;
-//
-//  spdlog::debug(
-//      "Dispatching k_InitRandomVec4 with ({} blocks, {} threads) "
-//      "on {} items",
-//      grid_size,
-//      block_size,
-//      pipe.n);
-//
-//  k_InitRandomVec4<<<grid_size, block_size, 0, stream>>>(
-//      pipe.u_points, pipe.n, pipe.min_coord, pipe.range, pipe.seed);
-//}
-
-static void dispatch_ComputeMorton(const int grid_size,
-                                   const cudaStream_t stream,
-                                   Pipe& pipe) {
-  constexpr auto block_size = 768;
-
-  spdlog::debug(
-      "Dispatching k_ComputeMortonCode with ({} blocks, {} "
-      "threads) "
-      "on {} items",
-      grid_size,
-      block_size,
-      pipe.n);
-
-  k_ComputeMortonCode<<<grid_size, block_size, 0, stream>>>(
-      pipe.u_points, pipe.sort.data(), pipe.n, pipe.min_coord, pipe.range);
-}
-
-static void dispatch_EdgeCount(const int grid_size,
-                               const cudaStream_t stream,
-                               const RadixTree& brt,
-                               int* edge_count) {
-  constexpr auto block_size = 512;
-
-  spdlog::debug(
-      "Dispatching k_EdgeCount with ({} blocks, {} threads) "
-      "on {} items",
-      grid_size,
-      block_size,
-      brt.getNumBrtNodes());
-
-  k_EdgeCount<<<grid_size, block_size, 0, stream>>>(
-      brt.u_prefix_n, brt.u_parent, edge_count, brt.getNumBrtNodes());
-}
-
-static void dispatch_EdgeOffset_safe([[maybe_unused]] const int grid_size,
-                                     const cudaStream_t stream,
-                                     const int* edge_count,
-                                     int* edge_offset,
-                                     const size_t n_brt_nodes) {
-  constexpr auto n_threads = PrefixSumAgent<int>::n_threads;
-
-  spdlog::debug(
-      "Dispatching k_SingleBlockExclusiveScan with (1 blocks, {} "
-      "threads)",
-      n_threads);
-
-  k_SingleBlockExclusiveScan<<<1, n_threads, 0, stream>>>(
-      edge_count, edge_offset, n_brt_nodes);
-}
-
-}  // namespace v2
-}  // namespace gpu

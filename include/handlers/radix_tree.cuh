@@ -1,7 +1,6 @@
 #pragma once
 
 #include "cuda/helper.cuh"
-#include "cuda/kernels/04_radix_tree.cuh"
 
 struct RadixTree {
   // ------------------------
@@ -21,7 +20,7 @@ struct RadixTree {
   RadixTree() = delete;
 
   // Let's allocate 'n' instead of 'n_brt_nodes' for now
-  explicit RadixTree(const size_t n) : n(n) {
+  explicit RadixTree(const size_t n) : n(n), n_brt_nodes() {
     MALLOC_MANAGED(&u_prefix_n, n);
     MALLOC_MANAGED(&u_has_leaf_left, n);
     MALLOC_MANAGED(&u_has_leaf_right, n);
@@ -72,30 +71,3 @@ struct RadixTree {
     SYNC_STREAM(stream);
   }
 };
-
-namespace gpu {
-namespace v2 {
-
-static void dispatch_BuildRadixTree(const int grid_size,
-                                    const cudaStream_t stream,
-                                    const unsigned int* u_unique_morton_keys,
-                                    const size_t n_unique_keys,
-                                    RadixTree& radix_tree) {
-  constexpr auto n_threads = 512;
-
-  spdlog::debug("Dispatching k_BuildRadixTree with ({} blocks, {} threads)",
-                grid_size,
-                n_threads);
-
-  gpu::k_BuildRadixTree<<<grid_size, n_threads, 0, stream>>>(
-      n_unique_keys,
-      u_unique_morton_keys,
-      radix_tree.u_prefix_n,
-      radix_tree.u_has_leaf_left,
-      radix_tree.u_has_leaf_right,
-      radix_tree.u_left_child,
-      radix_tree.u_parent);
-}
-
-}  // namespace v2
-}  // namespace gpu

@@ -5,7 +5,6 @@
 #include <cub/cub.cuh>
 
 #include "cuda/helper.cuh"
-#include "cuda/kernels/02_sort.cuh"
 
 struct OneSweepHandler {
   // need to match the ".cu" file
@@ -111,85 +110,3 @@ struct OneSweepHandler {
     SET_MEM_2_ZERO(im_storage.d_fourth_pass_histogram, RADIX * binning_blocks);
   }
 };
-
-namespace gpu {
-
-namespace v2 {
-
-static void dispatch_RadixSort(const int grid_size,
-                               const cudaStream_t stream,
-                               const OneSweepHandler& handler) {
-  const auto n = handler.size();
-
-  handler.clearMem();
-  handler.attachStreamSingle(stream);
-
-  spdlog::debug("Dispatching k_GlobalHistogram, grid_size: {}, block_size: {}",
-                grid_size,
-                OneSweepHandler::GLOBAL_HIST_THREADS);
-
-  k_GlobalHistogram<<<grid_size,
-                      OneSweepHandler::GLOBAL_HIST_THREADS,
-                      0,
-                      stream>>>(
-      handler.u_sort, handler.im_storage.d_global_histogram, n);
-
-  spdlog::debug("Dispatching k_Scan, grid_size: {}, block_size: {}",
-                OneSweepHandler::RADIX_PASSES,
-                OneSweepHandler::RADIX);
-
-  k_Scan<<<OneSweepHandler::RADIX_PASSES, OneSweepHandler::RADIX, 0, stream>>>(
-      handler.im_storage.d_global_histogram,
-      handler.im_storage.d_first_pass_histogram,
-      handler.im_storage.d_second_pass_histogram,
-      handler.im_storage.d_third_pass_histogram,
-      handler.im_storage.d_fourth_pass_histogram);
-
-  spdlog::debug(
-      "Dispatching k_DigitBinningPass, grid_size: {}, block_size: {} ... x4",
-      grid_size,
-      OneSweepHandler::BINNING_THREADS);
-
-  k_DigitBinningPass<<<grid_size,
-                       OneSweepHandler::BINNING_THREADS,
-                       0,
-                       stream>>>(handler.u_sort,  // <---
-                                 handler.im_storage.d_sort_alt,
-                                 handler.im_storage.d_first_pass_histogram,
-                                 handler.im_storage.d_index,
-                                 n,
-                                 0);
-
-  k_DigitBinningPass<<<grid_size,
-                       OneSweepHandler::BINNING_THREADS,
-                       0,
-                       stream>>>(handler.im_storage.d_sort_alt,
-                                 handler.u_sort,  // <---
-                                 handler.im_storage.d_second_pass_histogram,
-                                 handler.im_storage.d_index,
-                                 n,
-                                 8);
-
-  k_DigitBinningPass<<<grid_size,
-                       OneSweepHandler::BINNING_THREADS,
-                       0,
-                       stream>>>(handler.u_sort,  // <---
-                                 handler.im_storage.d_sort_alt,
-                                 handler.im_storage.d_third_pass_histogram,
-                                 handler.im_storage.d_index,
-                                 n,
-                                 16);
-
-  k_DigitBinningPass<<<grid_size,
-                       OneSweepHandler::BINNING_THREADS,
-                       0,
-                       stream>>>(handler.im_storage.d_sort_alt,
-                                 handler.u_sort,  // <---
-                                 handler.im_storage.d_fourth_pass_histogram,
-                                 handler.im_storage.d_index,
-                                 n,
-                                 24);
-}
-}  // namespace v2
-
-}  // namespace gpu

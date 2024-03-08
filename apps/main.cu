@@ -6,40 +6,20 @@
 #include "handlers/pipe.cuh"
 #include "kernels_fwd.h"
 
-void runHetero(const AppParams& params,
-               const cudaStream_t stream,
-               const std::unique_ptr<Pipe>& pipe) {}
-
 void runAllStagesOnGpu(const AppParams& params,
                        const cudaStream_t stream,
                        const std::unique_ptr<Pipe>& pipe) {
   // CPU should handle input because this will be similar to the real
   // application. e.g., reading point cloud data from camera
-  //cpu::k_InitRandomVec4(
-  //    pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
-
-
-  gpu::v2::dispatch_InitRandomVec4(params.n_blocks, stream, *pipe);
+  cpu::k_InitRandomVec4(
+      pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
 
   gpu::v2::dispatch_ComputeMorton(params.n_blocks, stream, *pipe);
-  gpu::v2::dispatch_RadixSort(params.n_blocks, stream, pipe->sort);
-  gpu::v2::dispatch_RemoveDuplicates(
-      params.n_blocks, stream, pipe->sort.data(), pipe->unique);
-
-  SYNC_STREAM(stream);
-  const auto n_unique = pipe->unique.attemptGetNumUnique();
-  pipe->brt.setNumBrtNodes(n_unique - 1);
-
-  gpu::v2::dispatch_BuildRadixTree(
-      params.n_blocks, stream, pipe->unique.begin(), n_unique, pipe->brt);
-  gpu::v2::dispatch_EdgeCount(
-      params.n_blocks, stream, pipe->brt, pipe->u_edge_count);
-  gpu::v2::dispatch_EdgeOffset_safe(params.n_blocks,
-                                    stream,
-                                    pipe->u_edge_count,
-                                    pipe->u_edge_offset,
-                                    pipe->brt.getNumBrtNodes());
-
+  gpu::v2::dispatch_RadixSort(params.n_blocks, stream, *pipe);
+  gpu::v2::dispatch_RemoveDuplicates(params.n_blocks, stream, *pipe);
+  gpu::v2::dispatch_BuildRadixTree(params.n_blocks, stream, *pipe);
+  gpu::v2::dispatch_EdgeCount(params.n_blocks, stream, *pipe);
+  gpu::v2::dispatch_EdgeOffset(params.n_blocks, stream, *pipe);
   gpu::v2::dispatch_BuildOctree(params.n_blocks, stream, *pipe);
 
   SYNC_STREAM(stream);
@@ -51,9 +31,9 @@ void runAllStagesOnGpu(const AppParams& params,
 
   const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() - 1];
   spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
-               n_unique,
+               pipe->getUniqueSize(),
                pipe->n,
-               100.0f * n_unique / pipe->n,
+               100.0f * pipe->getUniqueSize() / pipe->n,
                n_oct_nodes,
                pipe->n,
                100.0f * n_oct_nodes / pipe->n);

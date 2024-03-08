@@ -25,11 +25,12 @@ struct OctreeHandler {
   OctreeHandler() = delete;
 
   explicit OctreeHandler(const size_t n_octr_nodes_to_allocate)
-      : n_octr_nodes_to_allocate(n_octr_nodes_to_allocate) {
+      : n_octr_nodes_to_allocate(n_octr_nodes_to_allocate), n_oct_nodes() {
     // MALLOC_MANAGED(&u_children, n_octr_nodes_to_allocate * 8);
 
-    CHECK_CUDA_CALL(cudaMallocManaged(
-        &u_children, n_octr_nodes_to_allocate * 8 * sizeof(int)));
+    CHECK_CUDA_CALL(
+        cudaMallocManaged(reinterpret_cast<void**>(&u_children),
+                          n_octr_nodes_to_allocate * 8 * sizeof(int)));
 
     MALLOC_MANAGED(&u_corner, n_octr_nodes_to_allocate);
     MALLOC_MANAGED(&u_cell_size, n_octr_nodes_to_allocate);
@@ -81,71 +82,3 @@ struct OctreeHandler {
     SYNC_STREAM(stream);
   }
 };
-
-//
-// namespace gpu {
-// namespace v2 {
-//
-// static void dispatch_BuildOctree(const int grid_size,
-//                                 const cudaStream_t stream,
-//                                 const RadixTree& brt,
-//                                 const unsigned int* u_sorted_keys,
-//                                 const int* u_edge_offset,
-//                                 const int* u_edge_count,
-//                                 OctreeHandler& oct,
-//                                 const float min_coord,
-//                                 const float range) {
-//  constexpr auto block_size = 512;
-//
-//  spdlog::debug(
-//      "Dispatching k_MakeOctNodes with ({} blocks, {} threads) "
-//      "on {} items",
-//      grid_size,
-//      block_size,
-//      brt.getNumBrtNodes());
-//
-//  k_MakeOctNodes<<<grid_size, block_size, 0, stream>>>(oct.u_children,
-//                                                       oct.u_corner,
-//                                                       oct.u_cell_size,
-//                                                       oct.u_child_node_mask,
-//                                                       u_edge_offset,
-//                                                       u_edge_count,
-//                                                       u_sorted_keys,
-//                                                       brt.u_prefix_n,
-//                                                       brt.u_parent,
-//                                                       min_coord,
-//                                                       range,
-//                                                       brt.getNumBrtNodes());
-//}
-//
-// static void dispatch_LinkOctreeNodes(const int grid_size,
-//                                     const cudaStream_t stream,
-//                                     const int* node_offsets,
-//                                     const int* node_counts,
-//                                     const unsigned int* u_sorted_keys,
-//                                     const RadixTree& brt,
-//                                     OctreeHandler& oct) {
-//  constexpr auto block_size = 512;
-//
-//  spdlog::debug(
-//      "Dispatching k_LinkLeafNodes with ({} blocks, {} threads) "
-//      "on {} items",
-//      grid_size,
-//      block_size,
-//      brt.getNumBrtNodes());
-//
-//  k_LinkLeafNodes<<<grid_size, block_size, 0, stream>>>(oct.u_children,
-//                                                        oct.u_child_leaf_mask,
-//                                                        node_offsets,
-//                                                        node_counts,
-//                                                        u_sorted_keys,
-//                                                        brt.u_has_leaf_left,
-//                                                        brt.u_has_leaf_right,
-//                                                        brt.u_prefix_n,
-//                                                        brt.u_parent,
-//                                                        brt.u_left_child,
-//                                                        brt.getNumBrtNodes());
-//}
-//
-//}  // namespace v2
-//}  // namespace gpu

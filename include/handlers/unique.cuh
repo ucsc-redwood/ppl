@@ -1,8 +1,6 @@
 #pragma once
 
-#include "cuda/agents/unique_agent.cuh"
 #include "cuda/helper.cuh"
-#include "cuda/kernels/03_unique.cuh"
 
 struct UniqueHandler {
   // ------------------------
@@ -29,7 +27,8 @@ struct UniqueHandler {
 
   UniqueHandler() = delete;
 
-  explicit UniqueHandler(const size_t n_input) : n_input(n_input) {
+  explicit UniqueHandler(const size_t n_input)
+      : n_input(n_input), n_unique_keys() {
     MALLOC_MANAGED(&u_keys_out, n_input);
     MALLOC_MANAGED(&im_storage.u_flag_heads, n_input);
     // MALLOC_DEVICE(&im_storage.u_flag_heads, n_input);
@@ -78,43 +77,3 @@ struct UniqueHandler {
     ATTACH_STREAM_HOST(im_storage.u_flag_heads);
   }
 };
-
-namespace gpu {
-
-namespace v2 {
-
-inline void dispatch_RemoveDuplicates(const int grid_size,
-                                      const cudaStream_t stream,
-                                      const unsigned int* u_sorted_keys,
-                                      UniqueHandler& unique_handler) {
-  constexpr auto n_threads = UniqueAgent::n_threads;  // 512
-
-  spdlog::debug("Dispatching k_FindDups with ({} blocks, {} threads)",
-                grid_size,
-                n_threads);
-
-  k_FindDups<<<grid_size, n_threads, 0, stream>>>(
-      u_sorted_keys,
-      unique_handler.im_storage.u_flag_heads,
-      unique_handler.n_input);
-
-  SYNC_STREAM(stream);
-  std::partial_sum(
-      unique_handler.im_storage.u_flag_heads,
-      unique_handler.im_storage.u_flag_heads + unique_handler.n_input,
-      unique_handler.im_storage.u_flag_heads);
-
-  spdlog::debug("Dispatching k_MoveDups with ({} blocks, {} threads)",
-                grid_size,
-                n_threads);
-
-  k_MoveDups<<<grid_size, n_threads, 0, stream>>>(
-      u_sorted_keys,
-      unique_handler.im_storage.u_flag_heads,
-      unique_handler.n_input,
-      unique_handler.u_keys_out,
-      nullptr);
-}
-}  // namespace v2
-
-}  // namespace gpu
