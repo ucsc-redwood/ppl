@@ -12,13 +12,13 @@ void k_MakeOctNodes(const int n_threads,
                     const int* node_offsets,
                     const int* node_counts,
                     const unsigned int* codes,
-                    const uint8_t* rt_prefixN,
+                    const uint8_t* rt_prefix_n,
                     const int* rt_parents,
                     const float min_coord,
                     const float range,
                     const int n_brt_nodes) {
   // Computing the first node
-  const auto root_level = rt_prefixN[0] / 3;
+  const auto root_level = rt_prefix_n[0] / 3;
   const auto root_prefix = codes[0] >> (morton_bits - (3 * root_level));
 
   glm::vec4 ret;
@@ -28,7 +28,7 @@ void k_MakeOctNodes(const int n_threads,
   u_cell_size[0] = range;
 
   // Skipping the first node
-#pragma omp parallel for
+#pragma omp parallel for num_threads(n_threads)
   for (auto i = 1; i < n_brt_nodes; i++) {
     if (node_counts[i] > 0) {
       shared::v2::ProcessOctNode(i,
@@ -39,7 +39,7 @@ void k_MakeOctNodes(const int n_threads,
                                  node_offsets,
                                  node_counts,
                                  codes,
-                                 rt_prefixN,
+                                 rt_prefix_n,
                                  rt_parents,
                                  min_coord,
                                  range);
@@ -59,7 +59,7 @@ void k_LinkLeafNodes(const int n_threads,
                      const int* rt_parents,
                      const int* rt_leftChild,
                      const int n_brt_nodes) {
-#pragma omp parallel for
+#pragma omp parallel for num_threads(n_threads)
   for (auto i = 0; i < n_brt_nodes; i++) {
     shared::v2::ProcessLinkLeaf(i,
                                 u_children,

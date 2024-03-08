@@ -15,7 +15,7 @@ void k_MakeOctNodes(int n_threads,
                     const int* node_offsets,  // prefix sum
                     const int* node_counts,   // edge count
                     const unsigned int* codes,
-                    const uint8_t* rt_prefixN,
+                    const uint8_t* rt_prefix_n,
                     const int* rt_parents,
                     float min_coord,
                     float range,

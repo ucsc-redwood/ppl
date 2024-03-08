@@ -18,13 +18,13 @@ struct AppParams {
   // Execution parameters
   int n_threads = 4;
   int n_blocks = 64;
-  
+
   int n_iterations = 1;
 
   // Debug parameters
 
   // 0: none, 1: info, 2: debug, 3: trace
-  int log_level = 1; 
+  int log_level = 1;
 
   // bool debug_print = false;
   bool use_cpu = false;

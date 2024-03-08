@@ -1,4 +1,4 @@
-#include "dispatcher.cuh"
+#include "dispatcher.h"
 
 void gpu::v2::dispatch_ComputeMorton(const int grid_size,
                                      const cudaStream_t stream,
@@ -54,8 +54,9 @@ void gpu::v2::dispatch_RadixSort(const int grid_size,
   k_DigitBinningPass<<<grid_size,
                        OneSweepHandler::BINNING_THREADS,
                        0,
-                       stream>>>(pipe.sort.u_sort,  // <---
-                                 pipe.sort.im_storage.d_sort_alt,
+                       stream>>>(pipe.sort.u_sort,
+                                 // <---
+                                 pipe.sort.u_sort_alt,
                                  pipe.sort.im_storage.d_first_pass_histogram,
                                  pipe.sort.im_storage.d_index,
                                  n,
@@ -64,8 +65,9 @@ void gpu::v2::dispatch_RadixSort(const int grid_size,
   k_DigitBinningPass<<<grid_size,
                        OneSweepHandler::BINNING_THREADS,
                        0,
-                       stream>>>(pipe.sort.im_storage.d_sort_alt,
-                                 pipe.sort.u_sort,  // <---
+                       stream>>>(pipe.sort.u_sort_alt,
+                                 pipe.sort.u_sort,
+                                 // <---
                                  pipe.sort.im_storage.d_second_pass_histogram,
                                  pipe.sort.im_storage.d_index,
                                  n,
@@ -74,8 +76,9 @@ void gpu::v2::dispatch_RadixSort(const int grid_size,
   k_DigitBinningPass<<<grid_size,
                        OneSweepHandler::BINNING_THREADS,
                        0,
-                       stream>>>(pipe.sort.u_sort,  // <---
-                                 pipe.sort.im_storage.d_sort_alt,
+                       stream>>>(pipe.sort.u_sort,
+                                 // <---
+                                 pipe.sort.u_sort_alt,
                                  pipe.sort.im_storage.d_third_pass_histogram,
                                  pipe.sort.im_storage.d_index,
                                  n,
@@ -84,8 +87,9 @@ void gpu::v2::dispatch_RadixSort(const int grid_size,
   k_DigitBinningPass<<<grid_size,
                        OneSweepHandler::BINNING_THREADS,
                        0,
-                       stream>>>(pipe.sort.im_storage.d_sort_alt,
-                                 pipe.sort.u_sort,  // <---
+                       stream>>>(pipe.sort.u_sort_alt,
+                                 pipe.sort.u_sort,
+                                 // <---
                                  pipe.sort.im_storage.d_fourth_pass_histogram,
                                  pipe.sort.im_storage.d_index,
                                  n,
@@ -126,12 +130,6 @@ void gpu::v2::dispatch_RemoveDuplicates(int grid_size,
   pipe.n_unique_keys =
       pipe.unique.im_storage.u_flag_heads[pipe.getInputSize() - 1];
 }
-//
-// void gpu::v2::dispatch_BuildRadixTree(const int grid_size,
-//    const cudaStream_t stream,
-//    const unsigned int* u_unique_morton_keys,
-//    const size_t n_unique_keys,
-//    RadixTree& radix_tree) {
 
 void gpu::v2::dispatch_BuildRadixTree(const int grid_size,
                                       const cudaStream_t stream,
@@ -152,11 +150,6 @@ void gpu::v2::dispatch_BuildRadixTree(const int grid_size,
       pipe.brt.u_parent);
 }
 
-// void gpu::v2::dispatch_EdgeCount(const int grid_size,
-//                                  const cudaStream_t stream,
-//                                  const RadixTree& brt,
-//                                  int* edge_count) {
-
 void gpu::v2::dispatch_EdgeCount(const int grid_size,
                                  const cudaStream_t stream,
                                  const Pipe& pipe) {
@@ -174,12 +167,6 @@ void gpu::v2::dispatch_EdgeCount(const int grid_size,
                                                     pipe.u_edge_count,
                                                     pipe.getBrtSize());
 }
-
-// void gpu::v2::dispatch_EdgeOffset_safe(const int grid_size,
-//     const cudaStream_t stream,
-//     const int* edge_count,
-//     int* edge_offset,
-//     const size_t n_brt_nodes) {
 
 void gpu::v2::dispatch_EdgeOffset([[maybe_unused]] const int grid_size,
                                   const cudaStream_t stream,

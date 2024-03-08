@@ -22,11 +22,12 @@ struct OneSweepHandler {
   const size_t binning_blocks;
 
   unsigned int* u_sort;
+  unsigned int* u_sort_alt;  // cpu might use these
 
   // ------------------------
 
+  // GPU only
   struct _IntermediateStorage {
-    unsigned int* d_sort_alt;
     unsigned int* d_global_histogram;
     unsigned int* d_index;
     unsigned int* d_first_pass_histogram;
@@ -44,9 +45,9 @@ struct OneSweepHandler {
       : n(n), binning_blocks(cub::DivideAndRoundUp(n, BIN_PART_SIZE)) {
     // Essential buffer that CPU/GPU both can access
     MALLOC_MANAGED(&u_sort, n);
+    MALLOC_MANAGED(&u_sort_alt, n);
 
     // Temporary data on device that CPU doesn't need to access
-    MALLOC_DEVICE(&im_storage.d_sort_alt, n);
     MALLOC_DEVICE(&im_storage.d_global_histogram, RADIX * RADIX_PASSES);
     MALLOC_DEVICE(&im_storage.d_index, RADIX_PASSES);
     MALLOC_DEVICE(&im_storage.d_first_pass_histogram, RADIX * binning_blocks);
@@ -68,7 +69,7 @@ struct OneSweepHandler {
 
   ~OneSweepHandler() {
     CUDA_FREE(u_sort);
-    CUDA_FREE(im_storage.d_sort_alt);
+    CUDA_FREE(u_sort_alt);
     CUDA_FREE(im_storage.d_global_histogram);
     CUDA_FREE(im_storage.d_index);
     CUDA_FREE(im_storage.d_first_pass_histogram);

@@ -3,7 +3,7 @@ add_requires("cli11", "spdlog")
 target("app")
     set_kind("binary")
     add_includedirs("$(projectdir)/include")
-    add_headerfiles("../include/**/*", "*.cuh")
+    add_headerfiles("../include/**/*", "*.cuh", "*.h", "*.hpp")
     add_files(
         "*.cu",
         "*.cpp")

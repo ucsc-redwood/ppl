@@ -2,7 +2,7 @@
 #include <spdlog/spdlog.h>
 
 #include "app_params.hpp"
-#include "dispatcher.cuh"
+#include "dispatcher.h"
 #include "handlers/pipe.cuh"
 #include "kernels_fwd.h"
 
@@ -47,87 +47,96 @@ void runAllStagesOnCpu(const AppParams& params,
   cpu::k_InitRandomVec4(
       pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
 
-  cpu::k_ComputeMortonCode(params.n_threads,
-                           pipe->u_points,
-                           pipe->sort.u_sort,
-                           pipe->n,
-                           pipe->min_coord,
-                           pipe->range);
-  cpu::k_Sort(params.n_threads, pipe->sort.u_sort, temp_sort_alt, pipe->n);
+  cpu::v2::dispatch_ComputeMorton(params.n_threads, *pipe);
+  cpu::v2::dispatch_RadixSort(params.n_threads, *pipe);
+  cpu::v2::dispatch_RemoveDuplicates(params.n_threads, *pipe);
+  cpu::v2::dispatch_BuildRadixTree(params.n_threads, *pipe);
+  cpu::v2::dispatch_EdgeCount(params.n_threads, *pipe);
+  cpu::v2::dispatch_EdgeOffset(params.n_threads, *pipe);
+  cpu::v2::dispatch_BuildOctree(params.n_threads, *pipe);
 
-  // There's no parrallel find duplicates on CPU, so just use std::unique for
-  // now
-  const auto it = std::unique(pipe->sort.u_sort, pipe->sort.end());
-  const auto n_unique = std::distance(pipe->sort.u_sort, it);
-  pipe->brt.setNumBrtNodes(n_unique - 1);
+  // cpu::k_ComputeMortonCode(params.n_threads,
+  //                          pipe->u_points,
+  //                          pipe->sort.u_sort,
+  //                          pipe->n,
+  //                          pipe->min_coord,
+  //                          pipe->range);
+  // cpu::k_Sort(params.n_threads, pipe->sort.u_sort, temp_sort_alt, pipe->n);
 
-  // for cpu, u_sort is already sorted, and also removed dups
-  cpu::k_BuildRadixTree(params.n_threads,
-                        n_unique,
-                        pipe->sort.u_sort,
-                        pipe->brt.u_prefix_n,
-                        pipe->brt.u_has_leaf_left,
-                        pipe->brt.u_has_leaf_right,
-                        pipe->brt.u_left_child,
-                        pipe->brt.u_parent);
+  //// There's no parrallel find duplicates on CPU, so just use std::unique for
+  //// now
+  // const auto it = std::unique(pipe->sort.u_sort, pipe->sort.end());
+  // const auto n_unique = std::distance(pipe->sort.u_sort, it);
+  // pipe->brt.setNumBrtNodes(n_unique - 1);
 
-  cpu::k_EdgeCount(params.n_threads,
-                   pipe->brt.u_prefix_n,
-                   pipe->brt.u_parent,
-                   pipe->u_edge_count,
-                   pipe->brt.getNumBrtNodes());
+  //// for cpu, u_sort is already sorted, and also removed dups
+  // cpu::k_BuildRadixTree(params.n_threads,
+  //                       n_unique,
+  //                       pipe->sort.u_sort,
+  //                       pipe->brt.u_prefix_n,
+  //                       pipe->brt.u_has_leaf_left,
+  //                       pipe->brt.u_has_leaf_right,
+  //                       pipe->brt.u_left_child,
+  //                       pipe->brt.u_parent);
 
-  std::exclusive_scan(pipe->u_edge_count,
-                      pipe->u_edge_count + pipe->brt.getNumBrtNodes(),
-                      pipe->u_edge_offset,
-                      0);
+  // cpu::k_EdgeCount(params.n_threads,
+  //                  pipe->brt.u_prefix_n,
+  //                  pipe->brt.u_parent,
+  //                  pipe->u_edge_count,
+  //                  pipe->brt.getNumBrtNodes());
 
-  // peek 10 edge offsets
-  const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() - 1];
+  // std::exclusive_scan(pipe->u_edge_count,
+  //                     pipe->u_edge_count + pipe->brt.getNumBrtNodes(),
+  //                     pipe->u_edge_offset,
+  //                     0);
 
+  //// peek 10 edge offsets
+  // const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() -
+  // 1];
+
+  //// for (auto i = 0; i < 10; ++i) {
+  ////   spdlog::trace("edge offset[{}]: {}", i, pipe->u_edge_offset[i]);
+  //// }
+
+  // cpu::k_MakeOctNodes(params.n_threads,
+  //                     pipe->oct.u_children,
+  //                     pipe->oct.u_corner,
+  //                     pipe->oct.u_cell_size,
+  //                     pipe->oct.u_child_node_mask,
+  //                     pipe->u_edge_offset,
+  //                     pipe->u_edge_count,
+  //                     pipe->sort.u_sort,
+  //                     pipe->brt.u_prefix_n,
+  //                     pipe->brt.u_parent,
+  //                     pipe->min_coord,
+  //                     pipe->range,
+  //                     pipe->brt.getNumBrtNodes());
+
+  // cpu::k_LinkLeafNodes(params.n_threads,
+  //                      pipe->oct.u_children,
+  //                      pipe->oct.u_child_leaf_mask,
+  //                      pipe->u_edge_offset,
+  //                      pipe->u_edge_count,
+  //                      pipe->sort.u_sort,
+  //                      pipe->brt.u_has_leaf_left,
+  //                      pipe->brt.u_has_leaf_right,
+  //                      pipe->brt.u_prefix_n,
+  //                      pipe->brt.u_parent,
+  //                      pipe->brt.u_left_child,
+  //                      pipe->brt.getNumBrtNodes());
+
+  //// peek 10 octree node u_children
   // for (auto i = 0; i < 10; ++i) {
-  //   spdlog::trace("edge offset[{}]: {}", i, pipe->u_edge_offset[i]);
+  //   spdlog::trace("oct node[{}]: {}", i, pipe->oct.u_children[i][0]);
   // }
 
-  cpu::k_MakeOctNodes(params.n_threads,
-                      pipe->oct.u_children,
-                      pipe->oct.u_corner,
-                      pipe->oct.u_cell_size,
-                      pipe->oct.u_child_node_mask,
-                      pipe->u_edge_offset,
-                      pipe->u_edge_count,
-                      pipe->sort.u_sort,
-                      pipe->brt.u_prefix_n,
-                      pipe->brt.u_parent,
-                      pipe->min_coord,
-                      pipe->range,
-                      pipe->brt.getNumBrtNodes());
-
-  cpu::k_LinkLeafNodes(params.n_threads,
-                       pipe->oct.u_children,
-                       pipe->oct.u_child_leaf_mask,
-                       pipe->u_edge_offset,
-                       pipe->u_edge_count,
-                       pipe->sort.u_sort,
-                       pipe->brt.u_has_leaf_left,
-                       pipe->brt.u_has_leaf_right,
-                       pipe->brt.u_prefix_n,
-                       pipe->brt.u_parent,
-                       pipe->brt.u_left_child,
-                       pipe->brt.getNumBrtNodes());
-
-  // peek 10 octree node u_children
-  for (auto i = 0; i < 10; ++i) {
-    spdlog::trace("oct node[{}]: {}", i, pipe->oct.u_children[i][0]);
-  }
-
   spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
-               n_unique,
+               pipe->getUniqueSize(),
                pipe->n,
-               100.0f * n_unique / pipe->n,
-               n_oct_nodes,
+               100.0f * pipe->getUniqueSize() / pipe->n,
+               pipe->getOctSize(),
                pipe->n,
-               100.0f * n_oct_nodes / pipe->n);
+               100.0f * pipe->getOctSize() / pipe->n);
 
   // const auto is_sorted = std::is_sorted(pipe->sort.begin(),
   // pipe->sort.end()); spdlog::info("Is sorted: {}", is_sorted);
