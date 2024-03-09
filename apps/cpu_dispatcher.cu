@@ -16,8 +16,8 @@ void cpu::v2::dispatch_RadixSort(const int n_threads, const Pipe& pipe) {
 
 void cpu::v2::dispatch_RemoveDuplicates([[maybe_unused]] int n_threads,
                                         Pipe& pipe) {
-  std::copy(pipe.sort.u_sort,
-            pipe.sort.u_sort + pipe.getInputSize(),
+  std::copy_n(pipe.sort.u_sort,
+            pipe.getInputSize(),
             pipe.unique.u_keys_out);
 
   // const auto it = std::unique(pipe.unique.begin(),
