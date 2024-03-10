@@ -78,6 +78,19 @@ void BM_CPU_Sort(bm::State& st) {
   }
 }
 
+void BM_CPU_Std_Sort(bm::State& st) {
+  const auto [n, min_coord, range, init_seed] = configs[0];
+
+  std::vector<unsigned int> h_sort(n);
+
+  std::generate(
+      h_sort.begin(), h_sort.end(), [n = n]() mutable { return --n; });
+
+  for (auto _ : st) {
+    std::sort(h_sort.begin(), h_sort.end());
+  }
+}
+
 BENCHMARK(BM_GPU_Sort)
     ->UseManualTime()
     ->Unit(bm::kMillisecond)
@@ -90,3 +103,5 @@ BENCHMARK(BM_CPU_Sort)
     ->RangeMultiplier(2)
     ->Range(1, 32)
     ->ArgName("Threads");
+
+BENCHMARK(BM_CPU_Std_Sort)->Unit(bm::kMillisecond);

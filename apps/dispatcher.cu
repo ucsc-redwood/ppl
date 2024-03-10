@@ -54,8 +54,7 @@ void gpu::v2::dispatch_RadixSort(const int grid_size,
   k_DigitBinningPass<<<grid_size,
                        OneSweepHandler::BINNING_THREADS,
                        0,
-                       stream>>>(pipe.sort.u_sort,
-                                 // <---
+                       stream>>>(pipe.sort.u_sort,  // <---
                                  pipe.sort.u_sort_alt,
                                  pipe.sort.im_storage.d_first_pass_histogram,
                                  pipe.sort.im_storage.d_index,
@@ -66,8 +65,7 @@ void gpu::v2::dispatch_RadixSort(const int grid_size,
                        OneSweepHandler::BINNING_THREADS,
                        0,
                        stream>>>(pipe.sort.u_sort_alt,
-                                 pipe.sort.u_sort,
-                                 // <---
+                                 pipe.sort.u_sort,  // <---
                                  pipe.sort.im_storage.d_second_pass_histogram,
                                  pipe.sort.im_storage.d_index,
                                  n,
@@ -76,8 +74,7 @@ void gpu::v2::dispatch_RadixSort(const int grid_size,
   k_DigitBinningPass<<<grid_size,
                        OneSweepHandler::BINNING_THREADS,
                        0,
-                       stream>>>(pipe.sort.u_sort,
-                                 // <---
+                       stream>>>(pipe.sort.u_sort,  // <---
                                  pipe.sort.u_sort_alt,
                                  pipe.sort.im_storage.d_third_pass_histogram,
                                  pipe.sort.im_storage.d_index,
@@ -88,8 +85,7 @@ void gpu::v2::dispatch_RadixSort(const int grid_size,
                        OneSweepHandler::BINNING_THREADS,
                        0,
                        stream>>>(pipe.sort.u_sort_alt,
-                                 pipe.sort.u_sort,
-                                 // <---
+                                 pipe.sort.u_sort,  // <---
                                  pipe.sort.im_storage.d_fourth_pass_histogram,
                                  pipe.sort.im_storage.d_index,
                                  n,
@@ -99,7 +95,7 @@ void gpu::v2::dispatch_RadixSort(const int grid_size,
 void gpu::v2::dispatch_RemoveDuplicates(int grid_size,
                                         cudaStream_t stream,
                                         Pipe& pipe) {
-  constexpr auto n_threads = UniqueAgent::n_threads;  // 512
+  constexpr auto n_threads = UniqueAgent::n_threads;  // 256
 
   spdlog::debug("Dispatching k_FindDups with ({} blocks, {} threads)",
                 grid_size,
