@@ -9,18 +9,17 @@
 namespace bm = benchmark;
 
 template <class T>
-[[nodiscard]] static int DetermineBlockSize(T func) {
-  int blockSize = 1;
-  int minGridSize = 1;
+[[nodiscard]] int determineBlockSize(T func) {
+  int block_size = 1;
+  int min_grid_size = 1;
   CHECK_CUDA_CALL(
-      cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, func));
-  return blockSize;
+      cudaOccupancyMaxPotentialBlockSize(&min_grid_size, &block_size, func));
+  return block_size;
 }
 
 template <class T>
-[[nodiscard]] static int DetermineBlockSizeAndDisplay(T func,
-                                                      bm::State &state) {
-  const auto block_size = DetermineBlockSize(func);
+[[nodiscard]] int determineBlockSizeAndDisplay(T func, bm::State &state) {
+  const auto block_size = determineBlockSize(func);
   state.counters["block_size"] = block_size;
   return block_size;
 }
@@ -33,21 +32,10 @@ template <class T>
 
 class CudaEventTimer {
  public:
-  /**
-   * @brief Constructs a `CudaEventTimer` beginning a manual timing range.
-   *
-   * Optionally flushes L2 cache.
-   *
-   * @param[in,out] state  This is the benchmark::State whose timer we are going
-   * to update.
-   * @param[in] flush_l2_cache_ whether or not to flush the L2 cache before
-   *                            every iteration.
-   * @param[in] stream_ The CUDA stream we are measuring time on.
-   */
-  CudaEventTimer(bm::State &state,
-                 const bool flush_l2_cache = false,
-                 const cudaStream_t stream = 0)
-      : p_state(&state), stream_(stream) {
+  explicit CudaEventTimer(bm::State &state,
+                          const bool flush_l2_cache = false,
+                          const cudaStream_t stream = nullptr)
+      : stream_(stream), p_state_(&state) {
     // flush all of L2$
     if (flush_l2_cache) {
       int current_device = 0;
@@ -60,7 +48,8 @@ class CudaEventTimer {
       if (l2_cache_bytes > 0) {
         const int memset_value = 0;
         int *l2_cache_buffer = nullptr;
-        CHECK_CUDA_CALL(cudaMalloc(&l2_cache_buffer, l2_cache_bytes));
+        CHECK_CUDA_CALL(cudaMalloc(reinterpret_cast<void **>(&l2_cache_buffer),
+                                   l2_cache_bytes));
         CHECK_CUDA_CALL(cudaMemsetAsync(
             l2_cache_buffer, memset_value, l2_cache_bytes, stream_));
         CHECK_CUDA_CALL(cudaFree(l2_cache_buffer));
@@ -83,7 +72,7 @@ class CudaEventTimer {
     CHECK_CUDA_CALL(cudaEventSynchronize(stop_));
     float milliseconds = 0.0f;
     CHECK_CUDA_CALL(cudaEventElapsedTime(&milliseconds, start_, stop_));
-    p_state->SetIterationTime(milliseconds / (1000.0f));
+    p_state_->SetIterationTime(milliseconds / 1000.0f);
     CHECK_CUDA_CALL(cudaEventDestroy(start_));
     CHECK_CUDA_CALL(cudaEventDestroy(stop_));
   }
@@ -92,5 +81,5 @@ class CudaEventTimer {
   cudaEvent_t start_;
   cudaEvent_t stop_;
   cudaStream_t stream_;
-  bm::State *p_state;
+  bm::State *p_state_;
 };

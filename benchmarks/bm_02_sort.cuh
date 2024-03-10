@@ -1,7 +1,6 @@
 #pragma once
 
 #include "config.h"
-#include "cu_bench_helper.cuh"
 #include "handlers/one_sweep.cuh"
 
 static void BM_Sort(bm::State& st) {
@@ -28,5 +27,5 @@ BENCHMARK(BM_Sort)
     ->UseManualTime()
     ->Unit(bm::kMillisecond)
     ->RangeMultiplier(2)
-    ->Range(1, 256)
+    ->Range(1, 128)
     ->ArgName("GridSize");
