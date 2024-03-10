@@ -3,9 +3,8 @@
 #include "bm_02_sort.cuh"
 #include "config.h"
 #include "handlers/one_sweep.cuh"
-#include "kernels_fwd.h"
 
-void BM_Sort(bm::State& st) {
+void BM_GPU_Sort(bm::State& st) {
   const auto [n, min_coord, range, init_seed] = configs[0];
   const auto grid_size = st.range(0);
 
@@ -64,9 +63,30 @@ void BM_Sort(bm::State& st) {
   }
 }
 
-BENCHMARK(BM_Sort)
+void BM_CPU_Sort(bm::State& st) {
+  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto n_threads = st.range(0);
+
+  std::vector<unsigned int> h_sort(n);
+  std::vector<unsigned int> h_sort_alt(n);
+
+  std::generate(
+      h_sort.begin(), h_sort.end(), [n = n]() mutable { return --n; });
+
+  for (auto _ : st) {
+    cpu::k_Sort(n_threads, h_sort.data(), h_sort_alt.data(), n);
+  }
+}
+
+BENCHMARK(BM_GPU_Sort)
     ->UseManualTime()
     ->Unit(bm::kMillisecond)
     ->RangeMultiplier(2)
     ->Range(1, 128)
     ->ArgName("GridSize");
+
+BENCHMARK(BM_CPU_Sort)
+    ->Unit(bm::kMillisecond)
+    ->RangeMultiplier(2)
+    ->Range(1, 32)
+    ->ArgName("Threads");
