@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cuda_runtime_api.h>
+
 #include <vector>
 
 #include "helper.cuh"
@@ -17,9 +19,9 @@ class unified_alloc {
   unified_alloc() noexcept = default;
 
   template <typename U>
-  unified_alloc(unified_alloc<U> const &) noexcept {}
+  explicit unified_alloc(unified_alloc<U> const &) noexcept {}
 
-  auto allocate(size_type n, const void * = 0) -> value_type * {
+  auto allocate(size_type n, const void * = nullptr) -> value_type * {
     value_type *tmp;
     MallocManaged(&tmp, n);
     return tmp;
@@ -32,7 +34,7 @@ class unified_alloc {
   }
 };
 
-[[nodiscard]] int get_current_device() {
+[[nodiscard]] inline int get_current_device() {
   auto result = int{};
   cudaGetDevice(&result);
   return result;
@@ -55,8 +57,7 @@ auto prefetch(T const &container,
               cudaStream_t stream = 0,
               int device = get_current_device()) {
   using value_type = typename T::value_type;
-  auto p = container.data();
-  if (p) {
+  if (auto p = container.data()) {
     CHECK_CUDA_CALL(cudaMemPrefetchAsync(
         p, container.size() * sizeof(value_type), device, stream));
   }
