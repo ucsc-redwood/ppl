@@ -1,5 +1,4 @@
 #include "bm_06_prefix_sum.cuh"
-
 #include "config.h"
 
 void BM_GPU_PrefixSum(bm::State& st) {
@@ -36,4 +35,3 @@ void BM_CPU_PrefixSum(bm::State& st) {
 
 BENCHMARK(BM_GPU_PrefixSum)->UseManualTime()->Unit(bm::kMillisecond);
 BENCHMARK(BM_CPU_PrefixSum)->Unit(bm::kMillisecond);
-

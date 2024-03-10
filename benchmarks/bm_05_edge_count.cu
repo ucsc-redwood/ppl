@@ -1,5 +1,4 @@
 #include "bm_05_edge_count.cuh"
-
 #include "config.h"
 #include "handlers/radix_tree.cuh"
 
@@ -7,8 +6,7 @@ void BM_GPU_EdgeCount(bm::State& st) {
   const auto [n, min_coord, range, init_seed] = configs[0];
   const auto grid_size = st.range(0);
 
-  const auto block_size =
-      determineBlockSizeAndDisplay(gpu::k_EdgeCount, st);
+  const auto block_size = determineBlockSizeAndDisplay(gpu::k_EdgeCount, st);
 
   unsigned int* u_morton;
   MALLOC_MANAGED(&u_morton, n);
@@ -33,10 +31,7 @@ void BM_GPU_EdgeCount(bm::State& st) {
     CudaEventTimer timer(st, true);
 
     gpu::k_EdgeCount<<<grid_size, block_size>>>(
-        brt.u_prefix_n,
-        brt.u_parent,
-        u_edges,
-        n);
+        brt.u_prefix_n, brt.u_parent, u_edges, n);
   }
 
   CUDA_FREE(u_morton);
@@ -64,11 +59,8 @@ void BM_CPU_EdgeCount(bm::State& st) {
   SYNC_DEVICE();
 
   for (auto _ : st) {
-    cpu::k_EdgeCount(n_threads,
-                     brt.u_prefix_n,
-                     brt.u_parent,
-                     u_edges.data(),
-                     n);
+    cpu::k_EdgeCount(
+        n_threads, brt.u_prefix_n, brt.u_parent, u_edges.data(), n);
   }
 
   CUDA_FREE(u_morton);
@@ -79,12 +71,12 @@ BENCHMARK(BM_GPU_EdgeCount)
     ->Unit(bm::kMillisecond)
     ->RangeMultiplier(2)
     ->Range(1, 128)
-    ->Iterations(300) // takes too long
+    ->Iterations(300)  // takes too long
     ->ArgName("GridSize");
 
 BENCHMARK(BM_CPU_EdgeCount)
     ->Unit(bm::kMillisecond)
     ->RangeMultiplier(2)
     ->Range(1, 32)
-    ->Iterations(300) // takes too long
+    ->Iterations(300)  // takes too long
     ->ArgName("NumThreads");

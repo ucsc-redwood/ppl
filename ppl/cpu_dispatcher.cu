@@ -60,25 +60,25 @@ void cpu::v2::dispatch_BuildOctree(const int n_threads, const Pipe& pipe) {
                  pipe.oct.u_corner,
                  pipe.oct.u_cell_size,
                  pipe.oct.u_child_node_mask,
-                 pipe.u_edge_offset,
-                 pipe.u_edge_count,
+                 pipe.getEdgeOffset(),
+                 pipe.getEdgeCount(),
                  pipe.getUniqueKeys(),
                  pipe.brt.u_prefix_n,
                  pipe.brt.u_parent,
                  pipe.min_coord,
                  pipe.range,
-                 static_cast<int>(pipe.brt.getNumBrtNodes()));
+                 static_cast<int>(pipe.getBrtSize()));
 
   k_LinkLeafNodes(n_threads,
                   pipe.oct.u_children,
                   pipe.oct.u_child_leaf_mask,
-                  pipe.u_edge_offset,
-                  pipe.u_edge_count,
+                  pipe.getEdgeOffset(),
+                  pipe.getEdgeCount(),
                   pipe.getUniqueKeys(),
                   pipe.brt.u_has_leaf_left,
                   pipe.brt.u_has_leaf_right,
                   pipe.brt.u_prefix_n,
                   pipe.brt.u_parent,
                   pipe.brt.u_left_child,
-                  static_cast<int>(pipe.brt.getNumBrtNodes()));
+                  static_cast<int>(pipe.getBrtSize()));
 }

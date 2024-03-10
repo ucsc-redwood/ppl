@@ -125,6 +125,7 @@ void gpu::v2::dispatch_RemoveDuplicates(int grid_size,
   SYNC_STREAM(stream);
   pipe.n_unique_keys =
       pipe.unique.im_storage.u_flag_heads[pipe.getInputSize() - 1];
+  pipe.n_brt_nodes = pipe.n_unique_keys - 1;
 }
 
 void gpu::v2::dispatch_BuildRadixTree(const int grid_size,

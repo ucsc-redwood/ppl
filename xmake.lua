@@ -10,7 +10,7 @@ add_requires("openmp", "glm", "spdlog")
 includes("apps")
 includes("ppl")
 
-includes("tests")
+-- includes("tests")
 includes("benchmarks")
 
--- includes("tmp")
+includes("tmp")
