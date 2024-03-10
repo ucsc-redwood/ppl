@@ -4,4 +4,3 @@
 
 void BM_GPU_Morton(bm::State& st);
 void BM_CPU_Morton(bm::State& st);
-
