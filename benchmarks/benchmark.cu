@@ -2,6 +2,11 @@
 
 #include "bm_01_morton.cuh"
 #include "bm_02_sort.cuh"
+#include "bm_03_unique.cuh"
+#include "bm_04_raidx_tree.cuh"
+#include "bm_05_edge_count.cuh"
+#include "bm_06_prefix_sum.cuh"
+#include "bm_07_octree.cuh"
 
 int main(int argc, char** argv) {
   int device_count;

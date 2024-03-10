@@ -11,8 +11,6 @@ void BM_GPU_Unique(bm::State& st) {
   st.counters["unique_block_size"] = unique_block_size;
   st.counters["prefix_block_size"] = prefix_block_size;
 
-  // const auto block_size = determineBlockSizeAndDisplay(gpu::k_FindDups, st);
-
   unsigned int* u_sort;
   int* u_flag_heads;
   unsigned int* u_keys_out;
