@@ -1,5 +1,7 @@
 #pragma once
 
+#include <spdlog/spdlog.h>
+
 #include "cuda/helper.cuh"
 
 struct RadixTree {

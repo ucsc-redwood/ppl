@@ -21,7 +21,7 @@ struct Pipe {
 
   const float min_coord;
   const float range;
-  float seed;
+  int seed;
 
   // ------------------------
   // Essential Data
@@ -42,7 +42,7 @@ struct Pipe {
   explicit Pipe(const size_t n,
                 const float min_coord,
                 const float range,
-                const float seed)
+                const int seed)
       : n(n),
         n_unique_keys(),
         n_brt_nodes(),

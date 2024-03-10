@@ -1,4 +1,4 @@
-add_requires("cli11", "spdlog")
+add_requires("cli11")
 
 target("app")
     set_kind("binary")

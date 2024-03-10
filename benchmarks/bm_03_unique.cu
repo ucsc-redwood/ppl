@@ -5,7 +5,7 @@ void BM_GPU_Unique(bm::State& st) {
   const auto [n, min_coord, range, init_seed] = configs[0];
   const auto grid_size = st.range(0);
 
-  constexpr auto unique_block_size = 256;  // in 'agent.cu'
+  constexpr auto unique_block_size = 256; // in 'agent.cu'
   constexpr auto prefix_block_size = 128;
 
   st.counters["unique_block_size"] = unique_block_size;
@@ -28,9 +28,15 @@ void BM_GPU_Unique(bm::State& st) {
     gpu::k_FindDups<<<grid_size, unique_block_size>>>(u_sort, u_flag_heads, n);
 
     gpu::k_SingleBlockExclusiveScan<<<1, prefix_block_size>>>(
-        u_flag_heads, u_flag_heads, n);
+        u_flag_heads,
+        u_flag_heads,
+        n);
     gpu::k_MoveDups<<<grid_size, unique_block_size>>>(
-        u_sort, u_flag_heads, n, u_keys_out, nullptr);
+        u_sort,
+        u_flag_heads,
+        n,
+        u_keys_out,
+        nullptr);
   }
 
   CUDA_FREE(u_sort);
