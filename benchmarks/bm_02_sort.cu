@@ -1,5 +1,3 @@
-#pragma once
-
 #include "bm_02_sort.cuh"
 #include "config.h"
 #include "handlers/one_sweep.cuh"
