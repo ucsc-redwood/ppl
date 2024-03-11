@@ -56,7 +56,7 @@ struct Pipe {
     // rotating the points by 90 degrees.
     // this will modify the position of the points. but making sure the points
     // still in range.
-    for (auto i = 0; i < n; i++) {
+    for (auto i = 0u; i < n; i++) {
       const auto x_tmp = u_points[i].x;
       u_points[i].x = u_points[i].y;
       u_points[i].y = u_points[i].z;
