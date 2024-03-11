@@ -18,6 +18,5 @@ includes("apps")
 includes("ppl")
 
 -- includes("tests")
--- includes("benchmarks")
+includes("benchmarks")
 
--- includes("tmp")
