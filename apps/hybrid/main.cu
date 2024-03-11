@@ -1,16 +1,49 @@
 #include <omp.h>
 #include <spdlog/spdlog.h>
 
-#include "app_params.hpp"
+#include "../app_params.hpp"
+#include "cuda/helper.cuh"
 #include "device_dispatcher.h"
 #include "handlers/pipe.h"
 #include "host_dispatcher.h"
+#include "openmp/kernels/00_init.hpp"
+
+[[maybe_unused]] void attachPipeToStream(const cudaStream_t stream, Pipe* p) {
+  // Pipe
+  ATTACH_STREAM_GLOBAL(p->u_points);
+  ATTACH_STREAM_GLOBAL(p->u_edge_count);
+  ATTACH_STREAM_GLOBAL(p->u_edge_offset);
+
+  // One sweep
+  ATTACH_STREAM_GLOBAL(p->sort.u_sort);
+  ATTACH_STREAM_GLOBAL(p->sort.u_sort_alt);
+
+  // Unique
+  ATTACH_STREAM_GLOBAL(p->unique.u_keys_out);
+
+  // Radix tree
+  ATTACH_STREAM_GLOBAL(p->brt.u_prefix_n);
+  ATTACH_STREAM_GLOBAL(p->brt.u_has_leaf_left);
+  ATTACH_STREAM_GLOBAL(p->brt.u_has_leaf_right);
+  ATTACH_STREAM_GLOBAL(p->brt.u_left_child);
+  ATTACH_STREAM_GLOBAL(p->brt.u_parent);
+
+  // Octree
+  ATTACH_STREAM_GLOBAL(p->oct.u_children);
+  ATTACH_STREAM_GLOBAL(p->oct.u_corner);
+  ATTACH_STREAM_GLOBAL(p->oct.u_cell_size);
+  ATTACH_STREAM_GLOBAL(p->oct.u_child_node_mask);
+  ATTACH_STREAM_GLOBAL(p->oct.u_child_leaf_mask);
+
+  SYNC_STREAM(stream);
+}
 
 void runAllStagesOnGpu(const AppParams& params,
                        const cudaStream_t stream,
                        const std::unique_ptr<Pipe>& pipe) {
   // CPU should handle input because this will be similar to the real
   // application. e.g., reading point cloud data from camera
+
   cpu::k_InitRandomVec4(
       pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
 
@@ -24,23 +57,14 @@ void runAllStagesOnGpu(const AppParams& params,
 
   SYNC_STREAM(stream);
 
-  // // peek 10 oct nodes
-  // for (auto i = 0; i < 10; ++i) {
-  //   spdlog::trace("oct node[{}]: {}", i, pipe->oct.u_children[i][0]);
-  // }
-
-  const auto n_oct_nodes = pipe->u_edge_offset[pipe->getBrtSize() - 1];
   spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
                pipe->getUniqueSize(),
                pipe->n,
                100.0f * pipe->getUniqueSize() / pipe->n,
-               n_oct_nodes,
+               pipe->getOctSize(),
                pipe->n,
-               100.0f * n_oct_nodes / pipe->n);
+               100.0f * pipe->getOctSize() / pipe->n);
 }
-
-// // todo : fix this later
-// unsigned int* temp_sort_alt;
 
 void runAllStagesOnCpu(const AppParams& params,
                        const std::unique_ptr<Pipe>& pipe) {
@@ -55,81 +79,6 @@ void runAllStagesOnCpu(const AppParams& params,
   cpu::v2::dispatch_EdgeOffset(params.n_threads, *pipe);
   cpu::v2::dispatch_BuildOctree(params.n_threads, *pipe);
 
-  // cpu::k_ComputeMortonCode(params.n_threads,
-  //                          pipe->u_points,
-  //                          pipe->sort.u_sort,
-  //                          pipe->n,
-  //                          pipe->min_coord,
-  //                          pipe->range);
-  // cpu::k_Sort(params.n_threads, pipe->sort.u_sort, temp_sort_alt, pipe->n);
-
-  //// There's no parrallel find duplicates on CPU, so just use std::unique for
-  //// now
-  // const auto it = std::unique(pipe->sort.u_sort, pipe->sort.end());
-  // const auto n_unique = std::distance(pipe->sort.u_sort, it);
-  // pipe->brt.setNumBrtNodes(n_unique - 1);
-
-  //// for cpu, u_sort is already sorted, and also removed dups
-  // cpu::k_BuildRadixTree(params.n_threads,
-  //                       n_unique,
-  //                       pipe->sort.u_sort,
-  //                       pipe->brt.u_prefix_n,
-  //                       pipe->brt.u_has_leaf_left,
-  //                       pipe->brt.u_has_leaf_right,
-  //                       pipe->brt.u_left_child,
-  //                       pipe->brt.u_parent);
-
-  // cpu::k_EdgeCount(params.n_threads,
-  //                  pipe->brt.u_prefix_n,
-  //                  pipe->brt.u_parent,
-  //                  pipe->u_edge_count,
-  //                  pipe->brt.getNumBrtNodes());
-
-  // std::exclusive_scan(pipe->u_edge_count,
-  //                     pipe->u_edge_count + pipe->brt.getNumBrtNodes(),
-  //                     pipe->u_edge_offset,
-  //                     0);
-
-  //// peek 10 edge offsets
-  // const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() -
-  // 1];
-
-  //// for (auto i = 0; i < 10; ++i) {
-  ////   spdlog::trace("edge offset[{}]: {}", i, pipe->u_edge_offset[i]);
-  //// }
-
-  // cpu::k_MakeOctNodes(params.n_threads,
-  //                     pipe->oct.u_children,
-  //                     pipe->oct.u_corner,
-  //                     pipe->oct.u_cell_size,
-  //                     pipe->oct.u_child_node_mask,
-  //                     pipe->u_edge_offset,
-  //                     pipe->u_edge_count,
-  //                     pipe->sort.u_sort,
-  //                     pipe->brt.u_prefix_n,
-  //                     pipe->brt.u_parent,
-  //                     pipe->min_coord,
-  //                     pipe->range,
-  //                     pipe->brt.getNumBrtNodes());
-
-  // cpu::k_LinkLeafNodes(params.n_threads,
-  //                      pipe->oct.u_children,
-  //                      pipe->oct.u_child_leaf_mask,
-  //                      pipe->u_edge_offset,
-  //                      pipe->u_edge_count,
-  //                      pipe->sort.u_sort,
-  //                      pipe->brt.u_has_leaf_left,
-  //                      pipe->brt.u_has_leaf_right,
-  //                      pipe->brt.u_prefix_n,
-  //                      pipe->brt.u_parent,
-  //                      pipe->brt.u_left_child,
-  //                      pipe->brt.getNumBrtNodes());
-
-  //// peek 10 octree node u_children
-  // for (auto i = 0; i < 10; ++i) {
-  //   spdlog::trace("oct node[{}]: {}", i, pipe->oct.u_children[i][0]);
-  // }
-
   spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
                pipe->getUniqueSize(),
                pipe->n,
@@ -137,16 +86,11 @@ void runAllStagesOnCpu(const AppParams& params,
                pipe->getOctSize(),
                pipe->n,
                100.0f * pipe->getOctSize() / pipe->n);
-
-  // const auto is_sorted = std::is_sorted(pipe->sort.begin(),
-  // pipe->sort.end()); spdlog::info("Is sorted: {}", is_sorted);
 }
 
 int main(const int argc, const char** argv) {
   AppParams params(argc, argv);
   params.print_params();
-
-  // temp_sort_alt = new unsigned int[params.n];
 
   switch (params.log_level) {
     case 0:
@@ -181,7 +125,7 @@ int main(const int argc, const char** argv) {
 
   const auto pipe = std::make_unique<Pipe>(
       params.n, params.min_coord, params.getRange(), params.seed);
-  // pipe->attachStreamGlobal(streams[0]);
+  // attachPipeToStream(streams[0], pipe.get());
 
   if (params.use_cpu) {
     const auto start = std::chrono::high_resolution_clock::now();

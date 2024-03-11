@@ -1,6 +1,7 @@
 add_requires("cli11")
 
 includes("cpu-only")
+includes("hybrid")
 
 -- target("app")
 --     set_kind("binary")
