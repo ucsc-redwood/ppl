@@ -195,13 +195,17 @@ void BM_CPU_Octree(bm::State& st) {
 
   Pipe p(n, min_coord, range, init_seed);
 
+  //   p.acquireNextFrameData();
   cpu::k_InitRandomVec4(p.u_points, n, min_coord, range, init_seed);
+
   cpu::v2::dispatch_ComputeMorton(n_threads, p);
   cpu::v2::dispatch_RadixSort(n_threads, p);
   cpu::v2::dispatch_RemoveDuplicates(n_threads, p);
   cpu::v2::dispatch_BuildRadixTree(n_threads, p);
   cpu::v2::dispatch_EdgeCount(n_threads, p);
   cpu::v2::dispatch_EdgeOffset(n_threads, p);
+
+  st.counters["n_brt"] = p.getBrtSize();
 
   for (auto _ : st) {
     cpu::v2::dispatch_BuildOctree(n_threads, p);
