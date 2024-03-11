@@ -12,7 +12,7 @@ void BM_GPU_Octree(bm::State& st) {
   const auto grid_size = st.range(0);
 
   Pipe p(n, min_coord, range, init_seed);
-  p.attachStreamGlobal(stream);
+  // p.attachStreamGlobal(stream);
 
   cpu::k_InitRandomVec4(p.u_points, n, min_coord, range, init_seed);
   gpu::v2::dispatch_ComputeMorton(16, stream, p);

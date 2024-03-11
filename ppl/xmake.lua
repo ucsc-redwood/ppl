@@ -4,7 +4,6 @@ target("ppl")
     set_kind("static")
     add_includedirs("$(projectdir)/include")
     add_files(
-        "*.cu",
         "cuda/*.cu",
         "openmp/*.cpp"
     )

@@ -29,7 +29,7 @@ void runAllStagesOnGpu(const AppParams& params,
   //   spdlog::trace("oct node[{}]: {}", i, pipe->oct.u_children[i][0]);
   // }
 
-  const auto n_oct_nodes = pipe->u_edge_offset[pipe->brt.getNumBrtNodes() - 1];
+  const auto n_oct_nodes = pipe->u_edge_offset[pipe->getBrtSize() - 1];
   spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
                pipe->getUniqueSize(),
                pipe->n,
@@ -181,7 +181,7 @@ int main(const int argc, const char** argv) {
 
   const auto pipe = std::make_unique<Pipe>(
       params.n, params.min_coord, params.getRange(), params.seed);
-  pipe->attachStreamGlobal(streams[0]);
+  // pipe->attachStreamGlobal(streams[0]);
 
   if (params.use_cpu) {
     const auto start = std::chrono::high_resolution_clock::now();

@@ -1,4 +1,11 @@
-#include "dispatcher.h"
+#include "host_dispatcher.h"
+#include "openmp/kernels/01_morton.hpp"
+#include "openmp/kernels/02_sort.hpp"
+#include "openmp/kernels/03_unique.hpp"
+#include "openmp/kernels/04_radix_tree.hpp"
+#include "openmp/kernels/05_edge_count.hpp"
+#include "openmp/kernels/06_prefix_sum.hpp"
+#include "openmp/kernels/07_octree.hpp"
 
 void cpu::v2::dispatch_ComputeMorton(const int n_threads, const Pipe& pipe) {
   k_ComputeMortonCode(n_threads,
@@ -18,8 +25,6 @@ void cpu::v2::dispatch_RemoveDuplicates([[maybe_unused]] int n_threads,
                                         Pipe& pipe) {
   std::copy_n(pipe.sort.u_sort, pipe.getInputSize(), pipe.unique.u_keys_out);
 
-  // const auto it = std::unique(pipe.unique.begin(),
-  //                             pipe.unique.begin() + pipe.getInputSize());
   const auto it = std::unique(pipe.unique.u_keys_out,
                               pipe.unique.u_keys_out + pipe.getInputSize());
   const auto n_unique = std::distance(pipe.unique.u_keys_out, it);

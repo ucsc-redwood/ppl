@@ -1,4 +1,16 @@
-#include "dispatcher.h"
+#include <spdlog/spdlog.h>
+
+#include "cuda/agents/prefix_sum_agent.cuh"
+#include "cuda/agents/unique_agent.cuh"
+#include "cuda/helper.cuh"
+#include "cuda/kernels/01_morton.cuh"
+#include "cuda/kernels/02_sort.cuh"
+#include "cuda/kernels/03_unique.cuh"
+#include "cuda/kernels/04_radix_tree.cuh"
+#include "cuda/kernels/05_edge_count.cuh"
+#include "cuda/kernels/06_prefix_sum.cuh"
+#include "cuda/kernels/07_octree.cuh"
+#include "device_dispatcher.h"
 
 void gpu::v2::dispatch_ComputeMorton(const int grid_size,
                                      const cudaStream_t stream,
@@ -23,7 +35,7 @@ void gpu::v2::dispatch_RadixSort(const int grid_size,
   const auto n = pipe.n;
 
   pipe.sort.clearMem();
-  pipe.sort.attachStreamSingle(stream);
+  //   pipe.sort.attachStreamSingle(stream);
 
   spdlog::debug("Dispatching k_GlobalHistogram, grid_size: {}, block_size: {}",
                 grid_size,
@@ -95,27 +107,35 @@ void gpu::v2::dispatch_RadixSort(const int grid_size,
 void gpu::v2::dispatch_RemoveDuplicates(int grid_size,
                                         cudaStream_t stream,
                                         Pipe& pipe) {
-  constexpr auto n_threads = UniqueAgent::n_threads;  // 256
+  constexpr auto unique_block_size = UniqueAgent::n_threads;  // 256
+  constexpr auto prefix_block_size =
+      PrefixSumAgent<unsigned int>::n_threads;  // 128
 
   spdlog::debug("Dispatching k_FindDups with ({} blocks, {} threads)",
                 grid_size,
-                n_threads);
+                unique_block_size);
 
-  k_FindDups<<<grid_size, n_threads, 0, stream>>>(
+  k_FindDups<<<grid_size, unique_block_size, 0, stream>>>(
       pipe.getSortedKeys(),
       pipe.unique.im_storage.u_flag_heads,
       pipe.getInputSize());
 
-  SYNC_STREAM(stream);
-  std::partial_sum(pipe.unique.im_storage.u_flag_heads,
-                   pipe.unique.im_storage.u_flag_heads + pipe.getInputSize(),
-                   pipe.unique.im_storage.u_flag_heads);
+  //   SYNC_STREAM(stream);
+  //   std::partial_sum(pipe.unique.im_storage.u_flag_heads,
+  //                    pipe.unique.im_storage.u_flag_heads +
+  //                    pipe.getInputSize(),
+  //                    pipe.unique.im_storage.u_flag_heads);
 
   spdlog::debug("Dispatching k_MoveDups with ({} blocks, {} threads)",
-                grid_size,
-                n_threads);
+                1,
+                prefix_block_size);
 
-  k_MoveDups<<<grid_size, n_threads, 0, stream>>>(
+  k_SingleBlockExclusiveScan<<<1, prefix_block_size>>>(
+      pipe.unique.im_storage.u_flag_heads,
+      pipe.unique.im_storage.u_flag_heads,
+      pipe.getInputSize());
+
+  k_MoveDups<<<grid_size, unique_block_size, 0, stream>>>(
       pipe.getSortedKeys(),
       pipe.unique.im_storage.u_flag_heads,
       pipe.getInputSize(),
@@ -126,6 +146,8 @@ void gpu::v2::dispatch_RemoveDuplicates(int grid_size,
   pipe.n_unique_keys =
       pipe.unique.im_storage.u_flag_heads[pipe.getInputSize() - 1];
   pipe.n_brt_nodes = pipe.n_unique_keys - 1;
+
+  // TODO: use memcpy from symbol async
 }
 
 void gpu::v2::dispatch_BuildRadixTree(const int grid_size,

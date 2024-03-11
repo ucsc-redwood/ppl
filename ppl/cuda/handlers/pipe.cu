@@ -1,0 +1,64 @@
+#pragma once
+
+#include <glm/glm.hpp>
+
+// #include "kernels_fwd.h"
+// #include "octree.cuh"
+// #include "one_sweep.cuh"
+// #include "radix_tree.cuh"
+// #include "unique.cuh"
+
+#include "cuda/helper.cuh"
+#include "handlers/pipe.h"
+
+explicit Pipe::Pipe(const size_t n,
+                    const float min_coord,
+                    const float range,
+                    const int seed)
+    : n(n),
+      n_unique_keys(),
+      n_brt_nodes(),
+      n_oct_nodes(),
+      min_coord(min_coord),
+      range(range),
+      seed(seed),
+      sort(n),
+      unique(n),
+      brt(n),
+      oct(static_cast<size_t>(static_cast<double>(n) * EDUCATED_GUESS)) {
+  MALLOC_MANAGED(&u_points, n);
+  MALLOC_MANAGED(&u_edge_count, n);
+  MALLOC_MANAGED(&u_edge_offset, n);
+
+  SYNC_DEVICE();
+
+  spdlog::trace("On constructor: Pipe, n: {}", n);
+}
+
+~Pipe::Pipe() {
+  CUDA_FREE(u_points);
+  CUDA_FREE(u_edge_count);
+  CUDA_FREE(u_edge_offset);
+
+  spdlog::trace("On destructor: Pipe");
+}
+
+// ------------------------
+
+// void attachStreamSingle(const cudaStream_t stream) const {
+//   ATTACH_STREAM_SINGLE(u_points);
+//   ATTACH_STREAM_SINGLE(u_edge_count);
+//   ATTACH_STREAM_SINGLE(u_edge_offset);
+// }
+
+// void attachStreamGlobal(const cudaStream_t stream) const {
+//   ATTACH_STREAM_GLOBAL(u_points);
+//   ATTACH_STREAM_GLOBAL(u_edge_count);
+//   ATTACH_STREAM_GLOBAL(u_edge_offset);
+// }
+
+// void attachStreamHost(const cudaStream_t stream) const {
+//   ATTACH_STREAM_HOST(u_points);
+//   ATTACH_STREAM_HOST(u_edge_count);
+//   ATTACH_STREAM_HOST(u_edge_offset);
+// }
