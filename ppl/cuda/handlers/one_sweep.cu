@@ -1,5 +1,3 @@
-#pragma once
-
 #include <spdlog/spdlog.h>
 
 #include <cub/cub.cuh>
@@ -7,7 +5,7 @@
 #include "cuda/helper.cuh"
 #include "handlers/one_sweep.h"
 
-explicit OneSweepHandler::OneSweepHandler(const size_t n)
+OneSweepHandler::OneSweepHandler(const size_t n)
     : n(n), binning_blocks(cub::DivideAndRoundUp(n, BIN_PART_SIZE)) {
   // Essential buffer that CPU/GPU both can access
   MALLOC_MANAGED(&u_sort, n);
@@ -27,7 +25,7 @@ explicit OneSweepHandler::OneSweepHandler(const size_t n)
                 binning_blocks);
 }
 
-~OneSweepHandler::OneSweepHandler() {
+OneSweepHandler::~OneSweepHandler() {
   CUDA_FREE(u_sort);
   CUDA_FREE(u_sort_alt);
   CUDA_FREE(im_storage.d_global_histogram);
@@ -39,19 +37,6 @@ explicit OneSweepHandler::OneSweepHandler(const size_t n)
 
   spdlog::trace("On destructor: OneSweepHandler");
 }
-
-// void attachStreamSingle(const cudaStream_t stream) const {
-//   ATTACH_STREAM_SINGLE(u_sort);
-// }
-
-// void attachStreamGlobal(const cudaStream_t stream) const {
-//   ATTACH_STREAM_GLOBAL(u_sort);
-// }
-
-// void attachStreamHost(const cudaStream_t stream) const {
-//   ATTACH_STREAM_HOST(u_sort);
-//   SYNC_STREAM(stream);
-// }
 
 void OneSweepHandler::clearMem() const {
   SET_MEM_2_ZERO(im_storage.d_global_histogram, RADIX * RADIX_PASSES);

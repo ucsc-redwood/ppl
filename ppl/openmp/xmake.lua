@@ -1,0 +1,7 @@
+target("ppl-omp")
+    set_kind("static")
+    add_includedirs("$(projectdir)/include")
+    add_files("**/*.cpp")
+    add_cugencodes("native")
+    add_packages("openmp", "glm", "spdlog")
+target_end()

@@ -1,20 +1,14 @@
-#pragma once
+#include <spdlog/spdlog.h>
 
 #include <glm/glm.hpp>
-
-// #include "kernels_fwd.h"
-// #include "octree.cuh"
-// #include "one_sweep.cuh"
-// #include "radix_tree.cuh"
-// #include "unique.cuh"
 
 #include "cuda/helper.cuh"
 #include "handlers/pipe.h"
 
-explicit Pipe::Pipe(const size_t n,
-                    const float min_coord,
-                    const float range,
-                    const int seed)
+Pipe::Pipe(const size_t n,
+           const float min_coord,
+           const float range,
+           const int seed)
     : n(n),
       n_unique_keys(),
       n_brt_nodes(),
@@ -35,7 +29,7 @@ explicit Pipe::Pipe(const size_t n,
   spdlog::trace("On constructor: Pipe, n: {}", n);
 }
 
-~Pipe::Pipe() {
+Pipe::~Pipe() {
   CUDA_FREE(u_points);
   CUDA_FREE(u_edge_count);
   CUDA_FREE(u_edge_offset);

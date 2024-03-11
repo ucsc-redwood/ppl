@@ -2,9 +2,9 @@
 #include <spdlog/spdlog.h>
 
 #include "app_params.hpp"
-#include "dispatcher.h"
-#include "handlers/pipe.cuh"
-#include "kernels_fwd.h"
+#include "device_dispatcher.h"
+#include "handlers/pipe.h"
+#include "host_dispatcher.h"
 
 void runAllStagesOnGpu(const AppParams& params,
                        const cudaStream_t stream,
@@ -39,8 +39,8 @@ void runAllStagesOnGpu(const AppParams& params,
                100.0f * n_oct_nodes / pipe->n);
 }
 
-// todo : fix this later
-unsigned int* temp_sort_alt;
+// // todo : fix this later
+// unsigned int* temp_sort_alt;
 
 void runAllStagesOnCpu(const AppParams& params,
                        const std::unique_ptr<Pipe>& pipe) {
@@ -146,7 +146,7 @@ int main(const int argc, const char** argv) {
   AppParams params(argc, argv);
   params.print_params();
 
-  temp_sort_alt = new unsigned int[params.n];
+  // temp_sort_alt = new unsigned int[params.n];
 
   switch (params.log_level) {
     case 0:

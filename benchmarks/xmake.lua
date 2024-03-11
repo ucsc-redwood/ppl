@@ -7,7 +7,7 @@ target("benchmark")
     add_files("*.cu")
     add_packages("benchmark", "glm", "openmp", "spdlog")
     add_cugencodes("native")
-    add_deps("ppl")
+    add_deps("ppl-omp", "ppl-cuda")
 target_end()
 
 
