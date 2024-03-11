@@ -35,14 +35,6 @@ struct UniqueHandler {
 
   ~UniqueHandler();
 
-  // //   void setNumUnique(const size_t n) { n_unique_keys = n; }
-  // //   [[nodiscard]] size_t getNumUnique() const { return n_unique_keys; }
-
-  // // need to call dispatch_RemoveDuplicates before calling this function
-  // [[nodiscard]] size_t attemptGetNumUnique() const {
-  //   return im_storage.u_flag_heads[n_input - 1] + 1;
-  // }
-
   [[nodiscard]] const unsigned int* begin() const { return u_keys_out; }
   [[nodiscard]] const unsigned int* end() const {
     return u_keys_out + n_unique_keys;

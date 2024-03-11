@@ -31,13 +31,4 @@ struct RadixTree {
   ~RadixTree();
 
   [[nodiscard]] size_t size() const { return n; }
-
-  // void setNumBrtNodes(const size_t n_brt_nodes) {
-  //   this->n_brt_nodes = n_brt_nodes;
-  // }
-
-  // [[nodiscard]] size_t getNumBrtNodes() const { return n_brt_nodes; }
-
-  // void attachStreamSingle(const cudaStream_t stream);
-  // void attachStreamHost(const cudaStream_t stream);
 };

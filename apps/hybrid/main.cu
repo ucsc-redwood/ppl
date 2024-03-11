@@ -41,11 +41,7 @@
 void runAllStagesOnGpu(const AppParams& params,
                        const cudaStream_t stream,
                        const std::unique_ptr<Pipe>& pipe) {
-  // CPU should handle input because this will be similar to the real
-  // application. e.g., reading point cloud data from camera
-
-  cpu::k_InitRandomVec4(
-      pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
+  pipe->acquireNextFrameData();
 
   gpu::v2::dispatch_ComputeMorton(params.n_blocks, stream, *pipe);
   gpu::v2::dispatch_RadixSort(params.n_blocks, stream, *pipe);
@@ -68,8 +64,7 @@ void runAllStagesOnGpu(const AppParams& params,
 
 void runAllStagesOnCpu(const AppParams& params,
                        const std::unique_ptr<Pipe>& pipe) {
-  cpu::k_InitRandomVec4(
-      pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
+  pipe->acquireNextFrameData();
 
   cpu::v2::dispatch_ComputeMorton(params.n_threads, *pipe);
   cpu::v2::dispatch_RadixSort(params.n_threads, *pipe);
@@ -125,6 +120,9 @@ int main(const int argc, const char** argv) {
 
   const auto pipe = std::make_unique<Pipe>(
       params.n, params.min_coord, params.getRange(), params.seed);
+  cpu::k_InitRandomVec4(
+      pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
+
   // attachPipeToStream(streams[0], pipe.get());
 
   if (params.use_cpu) {

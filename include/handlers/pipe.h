@@ -1,5 +1,8 @@
 #pragma once
 
+#include <algorithm>
+#include <glm/common.hpp>
+
 #include "octree.h"
 #include "one_sweep.h"
 #include "radix_tree.h"
@@ -48,6 +51,19 @@ struct Pipe {
 
   ~Pipe();
 
+  // will modify u_points
+  void acquireNextFrameData() {
+    // rotating the points by 90 degrees.
+    // this will modify the position of the points. but making sure the points
+    // still in range.
+    for (auto i = 0; i < n; i++) {
+      const auto x_tmp = u_points[i].x;
+      u_points[i].x = u_points[i].y;
+      u_points[i].y = u_points[i].z;
+      u_points[i].z = x_tmp;
+    }
+  };
+
   // ------------------------
   // Preferred Getter
   // ------------------------
@@ -55,7 +71,7 @@ struct Pipe {
   [[nodiscard]] size_t getInputSize() const { return n; }
   [[nodiscard]] size_t getUniqueSize() const { return n_unique_keys; }
   [[nodiscard]] size_t getBrtSize() const { return n_brt_nodes; }
-  // [[nodiscard]] size_t getOctSize() const { return n_oct_nodes; }
+
   [[nodiscard]] size_t getOctSize() const {
     return u_edge_offset[n_brt_nodes - 1];
   }
@@ -63,29 +79,11 @@ struct Pipe {
   [[nodiscard]] const unsigned int* getSortedKeys() const {
     return sort.u_sort;
   }
+
   [[nodiscard]] const unsigned int* getUniqueKeys() const {
     return unique.u_keys_out;
   }
+
   [[nodiscard]] const int* getEdgeCount() const { return u_edge_count; }
   [[nodiscard]] const int* getEdgeOffset() const { return u_edge_offset; }
-
-  // // ------------------------
-
-  // void attachStreamSingle(const cudaStream_t stream) const {
-  //   ATTACH_STREAM_SINGLE(u_points);
-  //   ATTACH_STREAM_SINGLE(u_edge_count);
-  //   ATTACH_STREAM_SINGLE(u_edge_offset);
-  // }
-
-  // void attachStreamGlobal(const cudaStream_t stream) const {
-  //   ATTACH_STREAM_GLOBAL(u_points);
-  //   ATTACH_STREAM_GLOBAL(u_edge_count);
-  //   ATTACH_STREAM_GLOBAL(u_edge_offset);
-  // }
-
-  // void attachStreamHost(const cudaStream_t stream) const {
-  //   ATTACH_STREAM_HOST(u_points);
-  //   ATTACH_STREAM_HOST(u_edge_count);
-  //   ATTACH_STREAM_HOST(u_edge_offset);
-  // }
 };
