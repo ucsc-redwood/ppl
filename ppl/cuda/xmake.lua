@@ -1,7 +1,6 @@
 target("ppl-cuda")
     set_kind("static")
     add_includedirs("$(projectdir)/include")
-    add_files("**/*.cu")
+    add_files("**/*.cu", "**.cu")
     add_cugencodes("native")
     add_packages("openmp", "glm", "spdlog")
-target_end()
