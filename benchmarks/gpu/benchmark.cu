@@ -16,7 +16,7 @@
 #include "cuda/kernels/07_octree.cuh"
 #include "device_dispatcher.h"
 #include "handlers/one_sweep.h"
-#include "openmp/kernels/00_init.hpp"
+// #include "openmp/kernels/00_init.hpp"
 
 void BM_GPU_Morton(bm::State& st) {
   const auto [n, min_coord, range, _] = configs[0];
@@ -297,15 +297,14 @@ void BM_GPU_Octree(bm::State& st) {
   const auto grid_size = st.range(0);
 
   Pipe p(n, min_coord, range, init_seed);
-  // p.attachStreamGlobal(stream);
 
-  cpu::k_InitRandomVec4(p.u_points, n, min_coord, range, init_seed);
+  gpu::k_InitRandomVec4<<<64, 256, 0, stream>>>(
+      p.u_points, n, min_coord, range, init_seed);
   gpu::v2::dispatch_ComputeMorton(64, stream, p);
   gpu::v2::dispatch_RadixSort(64, stream, p);
   gpu::v2::dispatch_RemoveDuplicates(64, stream, p);
   gpu::v2::dispatch_BuildRadixTree(64, stream, p);
   gpu::v2::dispatch_EdgeCount(64, stream, p);
-  gpu::v2::dispatch_EdgeOffset(64, stream, p);
 
   SYNC_STREAM(stream);
 
