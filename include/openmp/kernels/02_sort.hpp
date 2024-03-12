@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 namespace cpu {
 
 void k_Sort(int num_threads,
