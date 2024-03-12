@@ -4,7 +4,6 @@
 #include <cuda_runtime_api.h>
 
 #include "cuda/helper.cuh"
-#include "kernels_fwd.h"
 
 namespace bm = benchmark;
 
