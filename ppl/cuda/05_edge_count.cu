@@ -1,4 +1,4 @@
-#include <cstdint>
+#include <device_launch_parameters.h>
 
 #include "shared/edge_count.h"
 
@@ -7,7 +7,7 @@ namespace gpu {
 __global__ void k_EdgeCount(const uint8_t* prefix_n,
                             const int* parents,
                             int* edge_count,
-                            int n_brt_nodes) {
+                            const int n_brt_nodes) {
   const auto idx = threadIdx.x + blockDim.x * blockIdx.x;
   const auto stride = blockDim.x * gridDim.x;
 

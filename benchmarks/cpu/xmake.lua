@@ -1,0 +1,8 @@
+target("bench-cpu")
+    set_kind("binary")
+    add_includedirs("$(projectdir)/include")
+    add_files("benchmark.cpp")
+    add_packages("benchmark", "glm", "openmp", "spdlog")
+    add_cugencodes("native")
+    add_deps("ppl-omp")
+target_end()
