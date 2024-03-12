@@ -41,9 +41,10 @@
 }
 
 // ----------------------------------------------------------------
-// Baseline
+// Baselines
 // ----------------------------------------------------------------
 
+// 1.
 void runAllStagesOnGpu(const AppParams& params,
                        const cudaStream_t stream,
                        const std::unique_ptr<Pipe>& pipe) {
@@ -68,20 +69,41 @@ void runAllStagesOnGpu(const AppParams& params,
                100.0f * pipe->getOctSize() / pipe->n);
 }
 
+// 2.
+void runBestOnEachPU(const AppParams& params,
+                     const cudaStream_t stream,
+                     const std::unique_ptr<Pipe>& pipe) {
+  pipe->acquireNextFrameData();
+
+  gpu::v2::dispatch_ComputeMorton(params.n_blocks, stream, *pipe);
+  gpu::v2::dispatch_RadixSort(params.n_blocks, stream, *pipe);
+  SYNC_STREAM(stream);
+  cpu::v2::dispatch_RemoveDuplicates(params.n_threads, *pipe);
+  cpu::v2::dispatch_BuildRadixTree(params.n_threads, *pipe);
+  gpu::v2::dispatch_EdgeCount(params.n_blocks, stream, *pipe);
+  SYNC_STREAM(stream);
+  cpu::v2::dispatch_EdgeOffset(params.n_threads, *pipe);
+  gpu::v2::dispatch_BuildOctree(params.n_blocks, stream, *pipe);
+  SYNC_STREAM(stream);
+
+  spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
+               pipe->getUniqueSize(),
+               pipe->n,
+               100.0f * pipe->getUniqueSize() / pipe->n,
+               pipe->getOctSize(),
+               pipe->n,
+               100.0f * pipe->getOctSize() / pipe->n);
+}
+
 // ----------------------------------------------------------------
 // Method 1: Two-Phase Coarse-Grained
-//  
+//
 // ----------------------------------------------------------------
 
-
-
+// 3.
 void runTwoPhaseCorseGrained(const AppParams& params,
-                             const std::unique_ptr<Pipe>& pipe) {
-
-
-
-
-                             }
+                             const cudaStream_t stream,
+                             const std::unique_ptr<Pipe>& pipe) {}
 
 int main(const int argc, const char** argv) {
   AppParams params(argc, argv);
@@ -136,9 +158,25 @@ int main(const int argc, const char** argv) {
 
   CHECK_CUDA_CALL(cudaEventRecord(start, nullptr));
 
-  for (auto i = 0; i < n_iterations; ++i) {
-    ++pipe->seed;
-    runAllStagesOnGpu(params, streams[0], pipe);
+  switch (params.method) {
+    case 0:
+      for (auto i = 0; i < n_iterations; ++i) {
+        runAllStagesOnGpu(params, streams[0], pipe);
+      }
+      break;
+    case 1:
+      for (auto i = 0; i < n_iterations; ++i) {
+        runBestOnEachPU(params, streams[0], pipe);
+      }
+      break;
+    case 2:
+      for (auto i = 0; i < n_iterations; ++i) {
+        runTwoPhaseCorseGrained(params, streams[0], pipe);
+      }
+      break;
+    default:
+      spdlog::error("Unknown method: {}", params.method);
+      throw std::runtime_error("Unknown method");
   }
 
   CHECK_CUDA_CALL(cudaEventRecord(stop, nullptr));

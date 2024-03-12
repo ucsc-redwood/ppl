@@ -15,13 +15,13 @@ AppParams::AppParams(const int argc, const char **argv) {
   app.add_option("-b,--blocks", n_blocks, "Number of GPU blocks")
       ->check(CLI::Range(1, 128));
 
+  app.add_option("-m,--method", method, "Method")->check(CLI::Range(0, 2));
+
   app.add_option("-l,--log-level", log_level, "Log level")
       ->check(CLI::Range(0, 3));
 
   app.add_option("-i,--iterations", n_iterations, "Number of iterations")
       ->check(CLI::PositiveNumber);
-
-  app.add_flag("-x", use_cpu, "Use CPU");
 
   try {
     app.parse(argc, argv);
@@ -31,6 +31,19 @@ AppParams::AppParams(const int argc, const char **argv) {
   }
 }
 
+constexpr auto method_name = [](int method) {
+  switch (method) {
+    case 0:
+      return "GPU-only";
+    case 1:
+      return "BestOnEachPU";
+    case 2:
+      return "TwoPhaseCoarseGrained";
+    default:
+      return "Unknown";
+  }
+};
+
 void AppParams::print_params() const {
   spdlog::info("n: {}", n);
   spdlog::info("min_coord: {}", min_coord);
@@ -38,4 +51,5 @@ void AppParams::print_params() const {
   spdlog::info("seed: {}", seed);
   spdlog::info("n_threads: {}", n_threads);
   spdlog::info("n_blocks: {}", n_blocks);
+  spdlog::info("method: {}", method_name(method));
 }
