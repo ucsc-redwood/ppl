@@ -16,7 +16,6 @@
 #include "cuda/kernels/07_octree.cuh"
 #include "device_dispatcher.h"
 #include "handlers/one_sweep.h"
-// #include "openmp/kernels/00_init.hpp"
 
 void BM_GPU_Morton(bm::State& st) {
   const auto [n, min_coord, range, _] = configs[0];
