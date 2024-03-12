@@ -134,21 +134,6 @@ void BM_CPU_EdgeCount(bm::State& st) {
   const auto [n, min_coord, range, init_seed] = configs[0];
   const auto n_threads = st.range(0);
 
-  //   std::vector<unsigned int> u_morton(n);
-  //   std::iota(u_morton.begin(), u_morton.end(), 0);
-
-  //   const RadixTree brt(n);
-  //   std::vector<int> u_edges(n);
-
-  //   cpu::k_BuildRadixTree(n_threads,
-  //                         n,
-  //                         u_morton.data(),
-  //                         brt.u_prefix_n,
-  //                         brt.u_has_leaf_left,
-  //                         brt.u_has_leaf_right,
-  //                         brt.u_left_child,
-  //                         brt.u_parent);
-
   Pipe p(n, min_coord, range, init_seed);
 
   cpu::k_InitRandomVec4(p.u_points, n, min_coord, range, init_seed);
@@ -160,8 +145,6 @@ void BM_CPU_EdgeCount(bm::State& st) {
 
   for (auto _ : st) {
     cpu::v2::dispatch_EdgeCount(n_threads, p);
-    // cpu::k_EdgeCount(
-    //     n_threads, brt.u_prefix_n, brt.u_parent, u_edges.data(), n);
   }
 }
 
@@ -195,9 +178,7 @@ void BM_CPU_Octree(bm::State& st) {
 
   Pipe p(n, min_coord, range, init_seed);
 
-  //   p.acquireNextFrameData();
   cpu::k_InitRandomVec4(p.u_points, n, min_coord, range, init_seed);
-
   cpu::v2::dispatch_ComputeMorton(n_threads, p);
   cpu::v2::dispatch_RadixSort(n_threads, p);
   cpu::v2::dispatch_RemoveDuplicates(n_threads, p);
@@ -216,7 +197,6 @@ BENCHMARK(BM_CPU_Octree)
     ->Unit(bm::kMillisecond)
     ->RangeMultiplier(2)
     ->Range(1, 32)
-    ->Iterations(1)
     ->ArgName("Threads");
 
 BENCHMARK_MAIN();

@@ -1,3 +1,4 @@
+#include <cuda_runtime_api.h>
 #include <omp.h>
 #include <spdlog/spdlog.h>
 
@@ -8,7 +9,8 @@
 #include "host_dispatcher.h"
 #include "openmp/kernels/00_init.hpp"
 
-[[maybe_unused]] void attachPipeToStream(const cudaStream_t stream, Pipe* p) {
+[[maybe_unused]] void attachPipeToStream(const cudaStream_t stream,
+                                         const Pipe* p) {
   // Pipe
   ATTACH_STREAM_GLOBAL(p->u_points);
   ATTACH_STREAM_GLOBAL(p->u_edge_count);
