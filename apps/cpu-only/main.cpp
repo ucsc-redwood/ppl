@@ -11,8 +11,7 @@
 
 void runAllStagesOnCpu(const AppParams& params,
                        const std::unique_ptr<Pipe>& pipe) {
-  cpu::k_InitRandomVec4(
-      pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
+  pipe->acquireNextFrameData();
 
   cpu::v2::dispatch_ComputeMorton(params.n_threads, *pipe);
   cpu::v2::dispatch_RadixSort(params.n_threads, *pipe);
@@ -63,6 +62,8 @@ int main(const int argc, const char* argv[]) {
 
   const auto pipe = std::make_unique<Pipe>(
       params.n, params.min_coord, params.getRange(), params.seed);
+  cpu::k_InitRandomVec4(
+      pipe->u_points, pipe->n, pipe->min_coord, pipe->range, pipe->seed);
 
   const auto start = std::chrono::high_resolution_clock::now();
 
