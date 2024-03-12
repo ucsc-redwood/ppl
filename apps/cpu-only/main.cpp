@@ -9,6 +9,10 @@
 #include "host_dispatcher.h"
 #include "openmp/kernels/00_init.hpp"
 
+// ----------------------------------------------------------------
+// Baseline
+// ----------------------------------------------------------------
+
 void runAllStagesOnCpu(const AppParams& params,
                        const std::unique_ptr<Pipe>& pipe) {
   pipe->acquireNextFrameData();
@@ -29,6 +33,7 @@ void runAllStagesOnCpu(const AppParams& params,
                pipe->n,
                100.0f * pipe->getOctSize() / pipe->n);
 }
+
 
 int main(const int argc, const char* argv[]) {
   AppParams params(argc, argv);
@@ -56,6 +61,8 @@ int main(const int argc, const char* argv[]) {
 #pragma omp parallel
   { spdlog::debug("Hello from thread {}", omp_get_thread_num()); }
 
+  // ----------------------------------------------------------------
+  // Initialization
   // ----------------------------------------------------------------
 
   const auto n_iterations = params.n_iterations;

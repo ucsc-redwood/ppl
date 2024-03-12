@@ -40,6 +40,10 @@
   SYNC_STREAM(stream);
 }
 
+// ----------------------------------------------------------------
+// Baseline
+// ----------------------------------------------------------------
+
 void runAllStagesOnGpu(const AppParams& params,
                        const cudaStream_t stream,
                        const std::unique_ptr<Pipe>& pipe) {
@@ -63,6 +67,21 @@ void runAllStagesOnGpu(const AppParams& params,
                pipe->n,
                100.0f * pipe->getOctSize() / pipe->n);
 }
+
+// ----------------------------------------------------------------
+// Method 1: Two-Phase Coarse-Grained
+//  
+// ----------------------------------------------------------------
+
+
+
+void runTwoPhaseCorseGrained(const AppParams& params,
+                             const std::unique_ptr<Pipe>& pipe) {
+
+
+
+
+                             }
 
 int main(const int argc, const char** argv) {
   AppParams params(argc, argv);
@@ -91,6 +110,9 @@ int main(const int argc, const char** argv) {
   { spdlog::debug("Hello from thread {}", omp_get_thread_num()); }
 
   // ------------------------------
+  // Init
+  // ------------------------------
+
   constexpr auto n_streams = 2;
   const auto n_iterations = params.n_iterations;
 
