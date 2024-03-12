@@ -1,7 +1,7 @@
 target("hybrid")
     set_kind("binary")
     add_includedirs("$(projectdir)/include")
-    -- add_headerfiles("../include/**/*", "../app_params.hpp")
+    add_headerfiles("../../include/**/*", "../app_params.hpp")
     add_files(
         "*.cu",
         "../app_params.cpp")
