@@ -64,27 +64,6 @@ void runAllStagesOnGpu(const AppParams& params,
                100.0f * pipe->getOctSize() / pipe->n);
 }
 
-void runAllStagesOnCpu(const AppParams& params,
-                       const std::unique_ptr<Pipe>& pipe) {
-  pipe->acquireNextFrameData();
-
-  cpu::v2::dispatch_ComputeMorton(params.n_threads, *pipe);
-  cpu::v2::dispatch_RadixSort(params.n_threads, *pipe);
-  cpu::v2::dispatch_RemoveDuplicates(params.n_threads, *pipe);
-  cpu::v2::dispatch_BuildRadixTree(params.n_threads, *pipe);
-  cpu::v2::dispatch_EdgeCount(params.n_threads, *pipe);
-  cpu::v2::dispatch_EdgeOffset(params.n_threads, *pipe);
-  cpu::v2::dispatch_BuildOctree(params.n_threads, *pipe);
-
-  spdlog::info("Unique keys: {} / {} ({}%) | Oct nodes: {} / {} ({}%)",
-               pipe->getUniqueSize(),
-               pipe->n,
-               100.0f * pipe->getUniqueSize() / pipe->n,
-               pipe->getOctSize(),
-               pipe->n,
-               100.0f * pipe->getOctSize() / pipe->n);
-}
-
 int main(const int argc, const char** argv) {
   AppParams params(argc, argv);
   params.print_params();
@@ -127,46 +106,29 @@ int main(const int argc, const char** argv) {
 
   // attachPipeToStream(streams[0], pipe.get());
 
-  if (params.use_cpu) {
-    const auto start = std::chrono::high_resolution_clock::now();
+  // ------------------------------
 
-    for (auto i = 0; i < n_iterations; ++i) {
-      ++pipe->seed;
-      runAllStagesOnCpu(params, pipe);
-    }
+  cudaEvent_t start, stop;
+  CHECK_CUDA_CALL(cudaEventCreate(&start));
+  CHECK_CUDA_CALL(cudaEventCreate(&stop));
 
-    const auto end = std::chrono::high_resolution_clock::now();
+  CHECK_CUDA_CALL(cudaEventRecord(start, nullptr));
 
-    spdlog::set_level(spdlog::level::info);
-
-    // print in milliseconds
-    const std::chrono::duration<double, std::milli> elapsed = end - start;
-    spdlog::info("Total time: {} ms | Average time: {} ms",
-                 elapsed.count(),
-                 elapsed.count() / n_iterations);
-  } else {
-    cudaEvent_t start, stop;
-    CHECK_CUDA_CALL(cudaEventCreate(&start));
-    CHECK_CUDA_CALL(cudaEventCreate(&stop));
-
-    CHECK_CUDA_CALL(cudaEventRecord(start, nullptr));
-
-    for (auto i = 0; i < n_iterations; ++i) {
-      ++pipe->seed;
-      runAllStagesOnGpu(params, streams[0], pipe);
-    }
-
-    CHECK_CUDA_CALL(cudaEventRecord(stop, nullptr));
-    CHECK_CUDA_CALL(cudaEventSynchronize(stop));
-
-    spdlog::set_level(spdlog::level::info);
-
-    float milliseconds = 0;
-    CHECK_CUDA_CALL(cudaEventElapsedTime(&milliseconds, start, stop));
-    spdlog::info("Total time: {} ms | Average time: {} ms",
-                 milliseconds,
-                 milliseconds / n_iterations);
+  for (auto i = 0; i < n_iterations; ++i) {
+    ++pipe->seed;
+    runAllStagesOnGpu(params, streams[0], pipe);
   }
+
+  CHECK_CUDA_CALL(cudaEventRecord(stop, nullptr));
+  CHECK_CUDA_CALL(cudaEventSynchronize(stop));
+
+  spdlog::set_level(spdlog::level::info);
+
+  float milliseconds = 0;
+  CHECK_CUDA_CALL(cudaEventElapsedTime(&milliseconds, start, stop));
+  spdlog::info("Total time: {} ms | Average time: {} ms",
+               milliseconds,
+               milliseconds / n_iterations);
   // ------------------------------
 
   spdlog::info("Done");
