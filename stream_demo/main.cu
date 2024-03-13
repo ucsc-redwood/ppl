@@ -43,8 +43,8 @@ __global__ void k_DoSomethingC(glm::vec4* u_input,
 struct Task {
   void allocate(const int n) {
     this->n = n;
-    MALLOC_MANAGED(&u_input, n);
-    MALLOC_MANAGED(&u_output, n);
+    CHECK_CUDA_CALL(cudaMallocManaged(&u_input, n * sizeof(glm::vec4)));
+    CHECK_CUDA_CALL(cudaMallocManaged(&u_output, n * sizeof(unsigned int)));
 
     std::generate(u_input, u_input + n, []() {
       return glm::vec4{1.0f, 2.0f, 3.0f, 4.0f};
