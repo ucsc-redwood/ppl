@@ -82,20 +82,22 @@ int main() {
 
   constexpr auto n_tasks = 100;
 
-  volatile auto h_original_input = new glm::vec4[n];
-  std::generate(h_original_input, h_original_input + n, []() {
+  // volatile auto h_original_input = new glm::vec4[n];
+
+  glm::vec4* u_original_input;
+  CHECK_CUDA_CALL(cudaMallocManaged(&u_original_input, n * sizeof(glm::vec4)));
+
+  std::generate(u_original_input, u_original_input + n, []() {
     return glm::vec4{1.0f, 2.0f, 3.0f, 4.0f};
   });
 
   constexpr auto n_streams = 4;
   std::array<cudaStream_t, n_streams> streams;
 
-  //   std::array<Task, n_streams> tasks{Task(n), Task(n), Task(n), Task(n)};
-
-  //   std::vector<Task> tasks(n_tasks);  // to dos
-  //   for (auto& task : tasks) {
-  //     task.allocate(n);
-  //   }
+  // std::vector<Task> tasks(n_tasks);  // to dos
+  // for (auto& task : tasks) {
+  //   task.allocate(n);
+  // }
 
   std::array<Task, n_streams> tasks{Task(), Task(), Task(), Task()};
 
@@ -120,7 +122,11 @@ int main() {
 
   for (auto i = 0; i < n_tasks; ++i) {
     const auto my_id = i % n_streams;
-    std::copy_n(h_original_input, n, tasks[my_id].u_input);
+    CHECK_CUDA_CALL(cudaMemcpyAsync(tasks[my_id].u_input,
+                                    u_original_input,
+                                    n * sizeof(glm::vec4),
+                                    cudaMemcpyDefault,
+                                    streams[my_id]));
 
     execute(tasks[my_id], streams.data(), my_id);
   }
@@ -143,6 +149,9 @@ int main() {
   CHECK_CUDA_CALL(cudaEventDestroy(start));
   CHECK_CUDA_CALL(cudaEventDestroy(stop));
 
-  delete[] h_original_input;
+  // delete[] h_original_input;
+
+  CUDA_FREE(u_original_input);
+
   return 0;
 }
