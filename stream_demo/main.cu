@@ -7,6 +7,39 @@
 #include "cuda/helper.cuh"
 #include "cuda/kernels/01_morton.cuh"
 
+__global__ void k_DoSomethingA(glm::vec4* u_input,
+                               unsigned int* u_output,
+                               const int n) {
+  const auto i = threadIdx.x + blockIdx.x * blockDim.x;
+  const auto stride = blockDim.x * gridDim.x;
+
+  for (auto j = i; j < n; j += stride) {
+    u_output[j] = static_cast<unsigned int>(sqrt(u_input[j].x));
+  }
+}
+
+__global__ void k_DoSomethingB(glm::vec4* u_input,
+                               unsigned int* u_output,
+                               const int n) {
+  const auto i = threadIdx.x + blockIdx.x * blockDim.x;
+  const auto stride = blockDim.x * gridDim.x;
+
+  for (auto j = i; j < n; j += stride) {
+    u_output[j] = static_cast<unsigned int>(pow(u_input[j].y, 6.66));
+  }
+}
+
+__global__ void k_DoSomethingC(glm::vec4* u_input,
+                               unsigned int* u_output,
+                               const int n) {
+  const auto i = threadIdx.x + blockIdx.x * blockDim.x;
+  const auto stride = blockDim.x * gridDim.x;
+
+  for (auto j = i; j < n; j += stride) {
+    u_output[j] = static_cast<unsigned int>(exp(u_input[j].z));
+  }
+}
+
 struct Task {
   void allocate(const int n) {
     this->n = n;
@@ -32,8 +65,16 @@ void execute(Task& t, cudaStream_t* stream, const int tid) {
   CHECK_CUDA_CALL(
       cudaStreamAttachMemAsync(stream[tid], t.u_input, 0, cudaMemAttachSingle));
 
-  gpu::k_ComputeMortonCode<<<1, 768, 0, stream[tid]>>>(
-      t.u_input, t.u_output, t.n, 0.0f, 100.0f);
+  if (tid == 0) {
+    k_DoSomethingA<<<1, 512, 0, stream[tid]>>>(t.u_input, t.u_output, t.n);
+  } else if (tid == 1) {
+    k_DoSomethingB<<<1, 512, 0, stream[tid]>>>(t.u_input, t.u_output, t.n);
+  } else if (tid == 2) {
+    k_DoSomethingC<<<1, 512, 0, stream[tid]>>>(t.u_input, t.u_output, t.n);
+  } else {
+    gpu::k_ComputeMortonCode<<<1, 512, 0, stream[tid]>>>(
+        t.u_input, t.u_output, t.n, 0.0f, 100.0f);
+  }
 }
 
 int main() {
