@@ -1,0 +1,11 @@
+target("stream")
+    set_kind("binary")
+    add_includedirs("$(projectdir)/include")
+    add_headerfiles("../include/**/*")
+    add_files("*.cu")
+    add_packages("spdlog", "openmp", "glm")
+    add_cugencodes("native")
+    add_deps("ppl-hybrid")
+    -- for host compiler, set openmp
+    add_cxxflags("-fopenmp")
+    add_cuflags("-Xcompiler -fopenmp")

@@ -20,3 +20,4 @@ includes("ppl")
 -- includes("tests")
 includes("benchmarks")
 
+includes("stream_demo")
