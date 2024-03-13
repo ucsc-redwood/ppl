@@ -11,6 +11,8 @@
 #include "host_dispatcher.h"
 #include "openmp/kernels/00_init.hpp"
 
+int DivideAndRoundUp(const int a, const int b) { return (a + b - 1) / b; }
+
 [[maybe_unused]] void attachPipeToStream(const cudaStream_t stream,
                                          const Pipe* p) {
   // Pipe
@@ -120,13 +122,12 @@ struct Task {
 };
 
 void execute(Task& p, cudaStream_t* stream, const int stream_id) {
-  // pipe->acquireNextFrameData();
-
   CHECK_CUDA_CALL(cudaMemcpyAsync(p.p->u_points,
                                   u_original_input,
                                   p.p->getInputSize() * sizeof(glm::vec4),
                                   cudaMemcpyDefault,
                                   stream[stream_id]));
+  // p.p->acquireNextFrameData();
 
   gpu::v2::dispatch_ComputeMorton(1, stream[stream_id], *p.p);
 
@@ -141,17 +142,10 @@ void execute(Task& p, cudaStream_t* stream, const int stream_id) {
 int main() {
   constexpr auto n = 1 << 20;  // 1M elements
 
-  constexpr auto n_tasks = 100;
-
-  // // volatile auto h_original_input = new glm::vec4[n];
+  constexpr auto n_tasks = 120;
 
   CHECK_CUDA_CALL(cudaMallocManaged(&u_original_input, n * sizeof(glm::vec4)));
-
   cpu::k_InitRandomVec4(u_original_input, n, 0.0f, 1024.0f, 114514);
-
-  // std::generate(u_original_input, u_original_input + n, []() {
-  //   return glm::vec4{1.0f, 2.0f, 3.0f, 4.0f};
-  // });
 
   // std::array<Pipe, n_streams> pipes{Pipe(n, 0.0f, 1024.0f, 1),
   //                                   Pipe(n, 0.0f, 1024.0f, 2),
@@ -168,16 +162,10 @@ int main() {
 
   spdlog::set_level(spdlog::level::trace);
 
-  std::vector<Task> pipes(n_tasks);
-  for (auto i = 0; i < n_tasks; ++i) {
+  std::vector<Task> pipes(n_streams);
+  for (auto i = 0; i < n_streams; ++i) {
     pipes[i].p = new Pipe(n, 0.0f, 1024.0f, 114514);
   }
-
-  // std::array<Task, n_streams> tasks{Task(), Task(), Task(), Task()};
-
-  // for (auto& task : tasks) {
-  //   task.allocate(n);
-  // }
 
   for (auto& stream : streams) {
     CHECK_CUDA_CALL(cudaStreamCreate(&stream));
@@ -194,10 +182,32 @@ int main() {
 
   // ------------------------------
 
-  for (auto i = 0; i < n_tasks; ++i) {
-    const auto stream_id = i % n_streams;
-    execute(pipes[i], streams.data(), stream_id);
+  const auto n_iters = DivideAndRoundUp(n_tasks, n_streams);
+
+  // // baseline. 1 stream handles all tasks
+  // for (auto i = 0; i < n_tasks; ++i) {
+  //   execute(pipes[0], streams.data(), 0);
+  // }
+
+  for (auto i = 0; i < n_iters; ++i) {
+    for (auto stream_id = 0; stream_id < n_streams; ++stream_id) {
+      execute(pipes[stream_id], streams.data(), stream_id);
+    }
+    SYNC_DEVICE();
   }
+
+  // for (auto i = 0; i < n_tasks; ++i) {
+  //   execute(pipes[0], streams.data(), 0);
+  //   SYNC_DEVICE();
+  // }
+
+  // for (auto i = 0; i < n_iters; ++i) {
+  //   // SYNC_STREAM(streams[0]);
+  //   for (auto stream_id = 0; stream_id < n_streams; ++stream_id) {
+  //     execute(pipes[i], streams.data(), stream_id);
+  //     SYNC_DEVICE();
+  //   }
+  // }
 
   // for (auto i = 0; i < n_tasks; ++i) {
   //   const auto my_id = i % n_streams;
