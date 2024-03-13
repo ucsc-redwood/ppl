@@ -25,7 +25,7 @@ __global__ void k_DoSomethingB(glm::vec4* u_input,
   const auto stride = blockDim.x * gridDim.x;
 
   for (auto j = i; j < n; j += stride) {
-    u_output[j] = static_cast<unsigned int>(pow(u_input[j].y, 6.66));
+    u_output[j] = u_input[j].x * u_input[j].y * u_input[j].z * u_input[j].w;
   }
 }
 
