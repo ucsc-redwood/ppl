@@ -12,30 +12,30 @@
 [[maybe_unused]] void attachPipeToStream(const cudaStream_t stream,
                                          const Pipe* p) {
   // Pipe
-  ATTACH_STREAM_GLOBAL(p->u_points);
-  ATTACH_STREAM_GLOBAL(p->u_edge_count);
-  ATTACH_STREAM_GLOBAL(p->u_edge_offset);
+  ATTACH_STREAM_SINGLE(p->u_points);
+  ATTACH_STREAM_SINGLE(p->u_edge_count);
+  ATTACH_STREAM_SINGLE(p->u_edge_offset);
 
   // One sweep
-  ATTACH_STREAM_GLOBAL(p->sort.u_sort);
-  ATTACH_STREAM_GLOBAL(p->sort.u_sort_alt);
+  ATTACH_STREAM_SINGLE(p->sort.u_sort);
+  ATTACH_STREAM_SINGLE(p->sort.u_sort_alt);
 
   // Unique
-  ATTACH_STREAM_GLOBAL(p->unique.u_keys_out);
+  ATTACH_STREAM_SINGLE(p->unique.u_keys_out);
 
   // Radix tree
-  ATTACH_STREAM_GLOBAL(p->brt.u_prefix_n);
-  ATTACH_STREAM_GLOBAL(p->brt.u_has_leaf_left);
-  ATTACH_STREAM_GLOBAL(p->brt.u_has_leaf_right);
-  ATTACH_STREAM_GLOBAL(p->brt.u_left_child);
-  ATTACH_STREAM_GLOBAL(p->brt.u_parent);
+  ATTACH_STREAM_SINGLE(p->brt.u_prefix_n);
+  ATTACH_STREAM_SINGLE(p->brt.u_has_leaf_left);
+  ATTACH_STREAM_SINGLE(p->brt.u_has_leaf_right);
+  ATTACH_STREAM_SINGLE(p->brt.u_left_child);
+  ATTACH_STREAM_SINGLE(p->brt.u_parent);
 
   // Octree
-  ATTACH_STREAM_GLOBAL(p->oct.u_children);
-  ATTACH_STREAM_GLOBAL(p->oct.u_corner);
-  ATTACH_STREAM_GLOBAL(p->oct.u_cell_size);
-  ATTACH_STREAM_GLOBAL(p->oct.u_child_node_mask);
-  ATTACH_STREAM_GLOBAL(p->oct.u_child_leaf_mask);
+  ATTACH_STREAM_SINGLE(p->oct.u_children);
+  ATTACH_STREAM_SINGLE(p->oct.u_corner);
+  ATTACH_STREAM_SINGLE(p->oct.u_cell_size);
+  ATTACH_STREAM_SINGLE(p->oct.u_child_node_mask);
+  ATTACH_STREAM_SINGLE(p->oct.u_child_leaf_mask);
 
   SYNC_STREAM(stream);
 }

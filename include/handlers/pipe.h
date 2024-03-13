@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <glm/common.hpp>
 
 #include "octree.h"
@@ -37,8 +38,7 @@ struct Pipe {
 
   // ------------------------
 
-  Pipe() = delete;
-
+  // Pipe() = delete;
   explicit Pipe(const size_t n,
                 const float min_coord,
                 const float range,
