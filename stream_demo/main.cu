@@ -82,12 +82,23 @@ int main() {
 
   constexpr auto n_tasks = 100;
 
+  volatile auto h_original_input = new glm::vec4[n];
+  std::generate(h_original_input, h_original_input + n, []() {
+    return glm::vec4{1.0f, 2.0f, 3.0f, 4.0f};
+  });
+
   constexpr auto n_streams = 4;
   std::array<cudaStream_t, n_streams> streams;
 
   //   std::array<Task, n_streams> tasks{Task(n), Task(n), Task(n), Task(n)};
 
-  std::vector<Task> tasks(n_tasks);  // to dos
+  //   std::vector<Task> tasks(n_tasks);  // to dos
+  //   for (auto& task : tasks) {
+  //     task.allocate(n);
+  //   }
+
+  std::array<Task, n_streams> tasks{Task(), Task(), Task(), Task()};
+
   for (auto& task : tasks) {
     task.allocate(n);
   }
@@ -108,7 +119,10 @@ int main() {
   // ------------------------------
 
   for (auto i = 0; i < n_tasks; ++i) {
-    execute(tasks[i], streams.data(), i % n_streams);
+    const auto my_id = i % n_streams;
+    std::copy_n(h_original_input, n, tasks[my_id].u_input);
+
+    execute(tasks[my_id], streams.data(), my_id);
   }
 
   // ------------------------------
@@ -129,5 +143,6 @@ int main() {
   CHECK_CUDA_CALL(cudaEventDestroy(start));
   CHECK_CUDA_CALL(cudaEventDestroy(stop));
 
+  delete[] h_original_input;
   return 0;
 }
