@@ -130,7 +130,7 @@ void gpu::v2::dispatch_RemoveDuplicates(int grid_size,
                 1,
                 prefix_block_size);
 
-  k_SingleBlockExclusiveScan<<<1, prefix_block_size>>>(
+  k_SingleBlockExclusiveScan<<<1, prefix_block_size, 0, stream>>>(
       pipe.unique.im_storage.u_flag_heads,
       pipe.unique.im_storage.u_flag_heads,
       pipe.getInputSize());
