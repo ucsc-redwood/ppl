@@ -4,7 +4,8 @@
 
 namespace cpu {
 
-void k_ComputeMortonCode(const int n_threads,
+void k_ComputeMortonCode(const int thread_start,
+                         const int thread_end,
                          const glm::vec4* data,
                          unsigned int* morton_keys,
                          const int n,

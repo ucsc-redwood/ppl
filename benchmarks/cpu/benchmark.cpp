@@ -26,7 +26,7 @@ static void BM_CPU_Morton(bm::State& st) {
 
   for (auto _ : st) {
     cpu::k_ComputeMortonCode(
-        n_threads, h_points.data(), h_sort.data(), n, min_coord, range);
+        0, n_threads - 1, h_points.data(), h_sort.data(), n, min_coord, range);
   }
 }
 

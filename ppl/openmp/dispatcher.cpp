@@ -8,7 +8,8 @@
 #include "openmp/kernels/07_octree.hpp"
 
 void cpu::v2::dispatch_ComputeMorton(const int n_threads, const Pipe& pipe) {
-  k_ComputeMortonCode(n_threads,
+  k_ComputeMortonCode(0,
+                      n_threads - 1,
                       pipe.u_points,
                       pipe.sort.u_sort,
                       static_cast<int>(pipe.getInputSize()),
