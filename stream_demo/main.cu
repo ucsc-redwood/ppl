@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <deque>
 #include <glm/glm.hpp>
 #include <string>
 
@@ -56,6 +57,7 @@ enum class Method {
   OneStreamHandleAll = 0,
   FourStreamsHandleAll = 1,
   SimpleGpuPipeline = 2,
+  CpuGpuHalfHalf = 3,
 };
 
 const std::array<std::string, 3> methodNames{
@@ -151,6 +153,47 @@ void run_four_stream_handle_all(const int n, const int n_tasks) {
   }
 }
 
+void run_cpu_gpu_half_half(const int n, const int n_tasks) {
+  std::vector<Task> cpu_tasks(n_tasks / 2);
+  std::vector<Task> gpu_tasks(n_tasks / 2);
+
+  for (auto i = 0; i < n_tasks / 2; ++i) {
+    cpu_tasks[i].p = new Pipe(n, 0.0f, 1024.0f, 114514);
+    getInputFrame(cpu_tasks[i].p, nullptr);
+  }
+
+  for (auto i = 0; i < n_tasks / 2; ++i) {
+    gpu_tasks[i].p = new Pipe(n, 0.0f, 1024.0f, 114514);
+    getInputFrame(gpu_tasks[i].p, nullptr);
+  }
+
+  cudaStream_t s;
+  CHECK_CUDA_CALL(cudaStreamCreate(&s));
+
+  cudaEvent_t start, stop;
+  CHECK_CUDA_CALL(cudaEventCreate(&start));
+  CHECK_CUDA_CALL(cudaEventCreate(&stop));
+
+  CHECK_CUDA_CALL(cudaEventRecord(start, s));
+
+  for (auto i = 0; i < n_tasks / 2; ++i) {
+    cpu_tasks[i].p->acquireNextFrameData();
+    gpu_tasks[i].p->acquireNextFrameData();
+
+    gpu::v2::dispatch_ComputeMorton(1, s, *cpu_tasks[i].p);
+    gpu::v2::dispatch_RadixSort(2, s, *cpu_tasks[i].p);
+    gpu::v2::dispatch_RemoveDuplicates(1, s, *cpu_tasks[i].p);
+    gpu::v2::dispatch_BuildRadixTree(2, s, *cpu_tasks[i].p);
+
+    cpu::v2::dispatch_ComputeMorton(1, *gpu_tasks[i].p);
+    cpu::v2::dispatch_RadixSort(2, *gpu_tasks[i].p);
+    cpu::v2::dispatch_RemoveDuplicates(1, *gpu_tasks[i].p);
+    cpu::v2::dispatch_BuildRadixTree(2, *gpu_tasks[i].p);
+  }
+
+  CHECK_CUDA_CALL(cudaStreamDestroy(s));
+}
+
 void run_simple_gpu_pipeline(const int n, const int n_tasks) {
   std::vector<Task> tasks(n_tasks);
   for (auto i = 0; i < n_tasks; ++i) {
@@ -178,29 +221,58 @@ void run_simple_gpu_pipeline(const int n, const int n_tasks) {
   //  ------------------------------
 
   {
+    // auto first_pipe = tasks[0].p;
+    // gpu::v2::dispatch_ComputeMorton(1, streams[0], *first_pipe);
+    // gpu::v2::dispatch_RadixSort(2, streams[0], *first_pipe);
+    // gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *first_pipe);
+    // gpu::v2::dispatch_BuildRadixTree(2, streams[0], *first_pipe);
+
+    // auto sec_pipe = tasks[1].p;
+    // gpu::v2::dispatch_ComputeMorton(1, streams[0], *sec_pipe);
+    // gpu::v2::dispatch_RadixSort(2, streams[0], *sec_pipe);
+    // gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *sec_pipe);
+    // gpu::v2::dispatch_BuildRadixTree(2, streams[0], *sec_pipe);
+
+    // auto third_pipe = tasks[2].p;
+    // gpu::v2::dispatch_ComputeMorton(1, streams[0], *third_pipe);
+    // gpu::v2::dispatch_RadixSort(2, streams[0], *third_pipe);
+    // gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *third_pipe);
+    // gpu::v2::dispatch_BuildRadixTree(2, streams[0], *third_pipe);
+
+    // auto fourth_pipe = tasks[3].p;
+    // gpu::v2::dispatch_ComputeMorton(1, streams[0], *fourth_pipe);
+    // gpu::v2::dispatch_RadixSort(2, streams[0], *fourth_pipe);
+    // gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *fourth_pipe);
+    // gpu::v2::dispatch_BuildRadixTree(2, streams[0], *fourth_pipe);
+
     auto first_pipe = tasks[0].p;
-    gpu::v2::dispatch_ComputeMorton(1, streams[0], *first_pipe);
-    gpu::v2::dispatch_RadixSort(2, streams[0], *first_pipe);
-    gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *first_pipe);
-    gpu::v2::dispatch_BuildRadixTree(2, streams[0], *first_pipe);
+    cpu::v2::dispatch_ComputeMorton(1, *first_pipe);
+    cpu::v2::dispatch_RadixSort(2, *first_pipe);
+    cpu::v2::dispatch_RemoveDuplicates(1, *first_pipe);
+    cpu::v2::dispatch_BuildRadixTree(2, *first_pipe);
+
+    // peek 5 sorted morton
+    for (auto i = 0; i < 5; ++i) {
+      spdlog::trace("{}", first_pipe->unique.u_keys_out[i]);
+    }
 
     auto sec_pipe = tasks[1].p;
-    gpu::v2::dispatch_ComputeMorton(1, streams[0], *sec_pipe);
-    gpu::v2::dispatch_RadixSort(2, streams[0], *sec_pipe);
-    gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *sec_pipe);
-    gpu::v2::dispatch_BuildRadixTree(2, streams[0], *sec_pipe);
+    cpu::v2::dispatch_ComputeMorton(1, *sec_pipe);
+    cpu::v2::dispatch_RadixSort(2, *sec_pipe);
+    cpu::v2::dispatch_RemoveDuplicates(1, *sec_pipe);
+    cpu::v2::dispatch_BuildRadixTree(2, *sec_pipe);
 
     auto third_pipe = tasks[2].p;
-    gpu::v2::dispatch_ComputeMorton(1, streams[0], *third_pipe);
-    gpu::v2::dispatch_RadixSort(2, streams[0], *third_pipe);
-    gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *third_pipe);
-    gpu::v2::dispatch_BuildRadixTree(2, streams[0], *third_pipe);
+    cpu::v2::dispatch_ComputeMorton(1, *third_pipe);
+    cpu::v2::dispatch_RadixSort(2, *third_pipe);
+    cpu::v2::dispatch_RemoveDuplicates(1, *third_pipe);
+    cpu::v2::dispatch_BuildRadixTree(2, *third_pipe);
 
     auto fourth_pipe = tasks[3].p;
-    gpu::v2::dispatch_ComputeMorton(1, streams[0], *fourth_pipe);
-    gpu::v2::dispatch_RadixSort(2, streams[0], *fourth_pipe);
-    gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *fourth_pipe);
-    gpu::v2::dispatch_BuildRadixTree(2, streams[0], *fourth_pipe);
+    cpu::v2::dispatch_ComputeMorton(1, *fourth_pipe);
+    cpu::v2::dispatch_RadixSort(2, *fourth_pipe);
+    cpu::v2::dispatch_RemoveDuplicates(1, *fourth_pipe);
+    cpu::v2::dispatch_BuildRadixTree(2, *fourth_pipe);
 
     SYNC_DEVICE();
   }
@@ -214,15 +286,19 @@ void run_simple_gpu_pipeline(const int n, const int n_tasks) {
   // stream 0 for morton
   // stream 1 for radix sort
   // const auto i = 3;
-  // auto first_pipe = tasks[i].p;
-  // auto sec_pipe = tasks[i - 1].p;
-  // auto third_pipe = tasks[i - 2].p;
-  // auto fourth_pipe = tasks[i - 3].p;
 
-  gpu::v2::dispatch_ComputeMorton(1, streams[0], *tasks[0].p);
-  gpu::v2::dispatch_RadixSort(2, streams[1], *tasks[1].p);
-  gpu::v2::dispatch_RemoveDuplicates(1, streams[3], *tasks[2].p);
-  gpu::v2::dispatch_BuildRadixTree(2, streams[4], *tasks[3].p);
+  for (auto i = 3; i < n_tasks; ++i) {
+    auto first_pipe = tasks[i].p;
+    auto sec_pipe = tasks[i - 1].p;
+    auto third_pipe = tasks[i - 2].p;
+    auto fourth_pipe = tasks[i - 3].p;
+
+    gpu::v2::dispatch_ComputeMorton(1, streams[0], *first_pipe);
+    gpu::v2::dispatch_RadixSort(2, streams[1], *sec_pipe);
+    gpu::v2::dispatch_RemoveDuplicates(1, streams[2], *third_pipe);
+    gpu::v2::dispatch_BuildRadixTree(2, streams[3], *fourth_pipe);
+  }
+
   SYNC_DEVICE();
 
   CHECK_CUDA_CALL(cudaEventRecord(stop, nullptr));
@@ -264,6 +340,9 @@ int main(const int argc, const char* argv[]) {
       break;
     case Method::SimpleGpuPipeline:
       run_simple_gpu_pipeline(n, n_tasks);
+      break;
+    case Method::CpuGpuHalfHalf:
+      run_cpu_gpu_half_half(n, n_tasks);
       break;
     default:
       throw std::runtime_error("Unknown method");

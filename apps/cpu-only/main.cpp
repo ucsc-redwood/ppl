@@ -34,7 +34,6 @@ void runAllStagesOnCpu(const AppParams& params,
                100.0f * pipe->getOctSize() / pipe->n);
 }
 
-
 int main(const int argc, const char* argv[]) {
   AppParams params(argc, argv);
   params.print_params();
