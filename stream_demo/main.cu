@@ -58,12 +58,15 @@ enum class Method {
   FourStreamsHandleAll = 1,
   SimpleGpuPipeline = 2,
   CpuGpuHalfHalf = 3,
+  SimpleCpuGpuPipeline = 4,
 };
 
-const std::array<std::string, 3> methodNames{
+const std::array<std::string, 5> methodNames{
     "OneStreamHandleAll",
     "FourStreamsHandleAll",
     "SimpleGpuPipeline",
+    "CpuGpuHalfHalf",
+    "SimpleCpuGpuPipeline",
 };
 
 void getInputFrame(Pipe* p, cudaStream_t s) {
@@ -89,11 +92,11 @@ void run_one_stream_handle_all(const int n, const int n_tasks) {
   CHECK_CUDA_CALL(cudaEventRecord(start, nullptr));
 
   for (auto i = 0; i < n_tasks; ++i) {
-    p->acquireNextFrameData();
-    gpu::v2::dispatch_ComputeMorton(1, s, *p);
-    gpu::v2::dispatch_RadixSort(2, s, *p);
-    gpu::v2::dispatch_RemoveDuplicates(1, s, *p);
-    gpu::v2::dispatch_BuildRadixTree(2, s, *p);
+    // p->acquireNextFrameData();
+    gpu::v2::dispatch_ComputeMorton(6, s, *p);
+    gpu::v2::dispatch_RadixSort(6, s, *p);
+    gpu::v2::dispatch_RemoveDuplicates(6, s, *p);
+    gpu::v2::dispatch_BuildRadixTree(6, s, *p);
   }
 
   CHECK_CUDA_CALL(cudaEventRecord(stop, nullptr));
@@ -130,11 +133,11 @@ void run_four_stream_handle_all(const int n, const int n_tasks) {
     const auto my_stream_id = i % n_streams;
 
     auto p = tasks[i].p;
-    p->acquireNextFrameData();
-    gpu::v2::dispatch_ComputeMorton(1, streams[my_stream_id], *p);
-    gpu::v2::dispatch_RadixSort(2, streams[my_stream_id], *p);
-    gpu::v2::dispatch_RemoveDuplicates(1, streams[my_stream_id], *p);
-    gpu::v2::dispatch_BuildRadixTree(2, streams[my_stream_id], *p);
+    // p->acquireNextFrameData();
+    gpu::v2::dispatch_ComputeMorton(6, streams[my_stream_id], *p);
+    gpu::v2::dispatch_RadixSort(6, streams[my_stream_id], *p);
+    gpu::v2::dispatch_RemoveDuplicates(6, streams[my_stream_id], *p);
+    gpu::v2::dispatch_BuildRadixTree(6, streams[my_stream_id], *p);
   }
 
   SYNC_DEVICE();
@@ -145,8 +148,7 @@ void run_four_stream_handle_all(const int n, const int n_tasks) {
   float milliseconds = 0;
   CHECK_CUDA_CALL(cudaEventElapsedTime(&milliseconds, start, stop));
   spdlog::info("Total time: {} ms", milliseconds);
-
-  CHECK_CUDA_CALL(cudaEventDestroy(start));
+  a CHECK_CUDA_CALL(cudaEventDestroy(start));
   CHECK_CUDA_CALL(cudaEventDestroy(stop));
   for (auto& stream : streams) {
     CHECK_CUDA_CALL(cudaStreamDestroy(stream));
@@ -177,22 +179,83 @@ void run_cpu_gpu_half_half(const int n, const int n_tasks) {
   CHECK_CUDA_CALL(cudaEventRecord(start, s));
 
   for (auto i = 0; i < n_tasks / 2; ++i) {
-    cpu_tasks[i].p->acquireNextFrameData();
-    gpu_tasks[i].p->acquireNextFrameData();
+    SYNC_STREAM(s);
+    // gpu_tasks[i].p->acquireNextFrameData();
 
-    gpu::v2::dispatch_ComputeMorton(1, s, *cpu_tasks[i].p);
-    gpu::v2::dispatch_RadixSort(2, s, *cpu_tasks[i].p);
-    gpu::v2::dispatch_RemoveDuplicates(1, s, *cpu_tasks[i].p);
-    gpu::v2::dispatch_BuildRadixTree(2, s, *cpu_tasks[i].p);
+    gpu::v2::dispatch_ComputeMorton(1, s, *gpu_tasks[i].p);
+    gpu::v2::dispatch_RadixSort(2, s, *gpu_tasks[i].p);
+    gpu::v2::dispatch_RemoveDuplicates(1, s, *gpu_tasks[i].p);
+    gpu::v2::dispatch_BuildRadixTree(2, s, *gpu_tasks[i].p);
 
-    cpu::v2::dispatch_ComputeMorton(1, *gpu_tasks[i].p);
-    cpu::v2::dispatch_RadixSort(2, *gpu_tasks[i].p);
-    cpu::v2::dispatch_RemoveDuplicates(1, *gpu_tasks[i].p);
-    cpu::v2::dispatch_BuildRadixTree(2, *gpu_tasks[i].p);
+    auto cpu_offset = std::min(n_tasks, n_tasks / 2 - 1);
+    // cpu_tasks[cpu_offset].p->acquireNextFrameData();
+    cpu::v2::dispatch_ComputeMorton(6, *cpu_tasks[cpu_offset].p);
+    cpu::v2::dispatch_RadixSort(6, *cpu_tasks[cpu_offset].p);
+    cpu::v2::dispatch_RemoveDuplicates(6, *cpu_tasks[cpu_offset].p);
+    cpu::v2::dispatch_BuildRadixTree(6, *cpu_tasks[cpu_offset].p);
   }
+
+  SYNC_DEVICE();
+
+  CHECK_CUDA_CALL(cudaEventRecord(stop, s));
+  CHECK_CUDA_CALL(cudaEventSynchronize(stop));
+
+  float milliseconds = 0;
+  CHECK_CUDA_CALL(cudaEventElapsedTime(&milliseconds, start, stop));
+  spdlog::info("Total time: {} ms", milliseconds);
 
   CHECK_CUDA_CALL(cudaStreamDestroy(s));
 }
+
+// void run_cpu_gpu_half_half(const int n, const int n_tasks) {
+//   std::vector<Task> cpu_tasks(n_tasks / 2);
+//   std::vector<Task> gpu_tasks(n_tasks / 2);
+
+//   for (auto i = 0; i < n_tasks / 2; ++i) {
+//     cpu_tasks[i].p = new Pipe(n, 0.0f, 1024.0f, 114514);
+//     getInputFrame(cpu_tasks[i].p, nullptr);
+//   }
+
+//   for (auto i = 0; i < n_tasks / 2; ++i) {
+//     gpu_tasks[i].p = new Pipe(n, 0.0f, 1024.0f, 114514);
+//     getInputFrame(gpu_tasks[i].p, nullptr);
+//   }
+
+//   cudaStream_t s;
+//   CHECK_CUDA_CALL(cudaStreamCreate(&s));
+
+//   cudaEvent_t start, stop;
+//   CHECK_CUDA_CALL(cudaEventCreate(&start));
+//   CHECK_CUDA_CALL(cudaEventCreate(&stop));
+
+//   CHECK_CUDA_CALL(cudaEventRecord(start, s));
+
+//   for (auto i = 0; i < n_tasks / 2; ++i) {
+//     cpu_tasks[i].p->acquireNextFrameData();
+//     gpu_tasks[i].p->acquireNextFrameData();
+
+//     gpu::v2::dispatch_ComputeMorton(1, s, *cpu_tasks[i].p);
+//     gpu::v2::dispatch_RadixSort(2, s, *cpu_tasks[i].p);
+//     gpu::v2::dispatch_RemoveDuplicates(1, s, *cpu_tasks[i].p);
+//     gpu::v2::dispatch_BuildRadixTree(2, s, *cpu_tasks[i].p);
+
+//     cpu::v2::dispatch_ComputeMorton(1, *gpu_tasks[i].p);
+//     cpu::v2::dispatch_RadixSort(2, *gpu_tasks[i].p);
+//     cpu::v2::dispatch_RemoveDuplicates(1, *gpu_tasks[i].p);
+//     cpu::v2::dispatch_BuildRadixTree(2, *gpu_tasks[i].p);
+//   }
+
+//   SYNC_DEVICE();
+
+//   CHECK_CUDA_CALL(cudaEventRecord(stop, s));
+//   CHECK_CUDA_CALL(cudaEventSynchronize(stop));
+
+//   float milliseconds = 0;
+//   CHECK_CUDA_CALL(cudaEventElapsedTime(&milliseconds, start, stop));
+//   spdlog::info("Total time: {} ms", milliseconds);
+
+//   CHECK_CUDA_CALL(cudaStreamDestroy(s));
+// }
 
 void run_simple_gpu_pipeline(const int n, const int n_tasks) {
   std::vector<Task> tasks(n_tasks);
@@ -221,30 +284,6 @@ void run_simple_gpu_pipeline(const int n, const int n_tasks) {
   //  ------------------------------
 
   {
-    // auto first_pipe = tasks[0].p;
-    // gpu::v2::dispatch_ComputeMorton(1, streams[0], *first_pipe);
-    // gpu::v2::dispatch_RadixSort(2, streams[0], *first_pipe);
-    // gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *first_pipe);
-    // gpu::v2::dispatch_BuildRadixTree(2, streams[0], *first_pipe);
-
-    // auto sec_pipe = tasks[1].p;
-    // gpu::v2::dispatch_ComputeMorton(1, streams[0], *sec_pipe);
-    // gpu::v2::dispatch_RadixSort(2, streams[0], *sec_pipe);
-    // gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *sec_pipe);
-    // gpu::v2::dispatch_BuildRadixTree(2, streams[0], *sec_pipe);
-
-    // auto third_pipe = tasks[2].p;
-    // gpu::v2::dispatch_ComputeMorton(1, streams[0], *third_pipe);
-    // gpu::v2::dispatch_RadixSort(2, streams[0], *third_pipe);
-    // gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *third_pipe);
-    // gpu::v2::dispatch_BuildRadixTree(2, streams[0], *third_pipe);
-
-    // auto fourth_pipe = tasks[3].p;
-    // gpu::v2::dispatch_ComputeMorton(1, streams[0], *fourth_pipe);
-    // gpu::v2::dispatch_RadixSort(2, streams[0], *fourth_pipe);
-    // gpu::v2::dispatch_RemoveDuplicates(1, streams[0], *fourth_pipe);
-    // gpu::v2::dispatch_BuildRadixTree(2, streams[0], *fourth_pipe);
-
     auto first_pipe = tasks[0].p;
     cpu::v2::dispatch_ComputeMorton(1, *first_pipe);
     cpu::v2::dispatch_RadixSort(2, *first_pipe);
@@ -315,6 +354,107 @@ void run_simple_gpu_pipeline(const int n, const int n_tasks) {
   }
 }
 
+void run_simple_cpu_gpu_pipeline(const int n, const int n_tasks) {
+  std::vector<Task> tasks(n_tasks);
+  for (auto i = 0; i < n_tasks; ++i) {
+    tasks[i].p = new Pipe(n, 0.0f, 1024.0f, 114514);
+    getInputFrame(tasks[i].p, nullptr);
+  }
+
+  constexpr auto n_streams = 4;
+  std::array<cudaStream_t, n_streams> streams;
+  for (auto& stream : streams) {
+    CHECK_CUDA_CALL(cudaStreamCreate(&stream));
+  }
+
+  cudaEvent_t start, stop;
+  CHECK_CUDA_CALL(cudaEventCreate(&start));
+  CHECK_CUDA_CALL(cudaEventCreate(&stop));
+  CHECK_CUDA_CALL(cudaEventRecord(start, nullptr));
+
+  // start with 1
+  // for (auto i = 1; i < n_tasks; ++i) {
+  // each stream process a different kernel
+
+  // ------------------------------
+  // need to setup the first few (stages)
+  //  ------------------------------
+
+  {
+    auto first_pipe = tasks[0].p;
+    cpu::v2::dispatch_ComputeMorton(1, *first_pipe);
+    cpu::v2::dispatch_RadixSort(2, *first_pipe);
+    cpu::v2::dispatch_RemoveDuplicates(1, *first_pipe);
+    cpu::v2::dispatch_BuildRadixTree(2, *first_pipe);
+
+    // peek 5 sorted morton
+    for (auto i = 0; i < 5; ++i) {
+      spdlog::trace("{}", first_pipe->unique.u_keys_out[i]);
+    }
+
+    auto sec_pipe = tasks[1].p;
+    cpu::v2::dispatch_ComputeMorton(1, *sec_pipe);
+    cpu::v2::dispatch_RadixSort(2, *sec_pipe);
+    cpu::v2::dispatch_RemoveDuplicates(1, *sec_pipe);
+    cpu::v2::dispatch_BuildRadixTree(2, *sec_pipe);
+
+    auto third_pipe = tasks[2].p;
+    cpu::v2::dispatch_ComputeMorton(1, *third_pipe);
+    cpu::v2::dispatch_RadixSort(2, *third_pipe);
+    cpu::v2::dispatch_RemoveDuplicates(1, *third_pipe);
+    cpu::v2::dispatch_BuildRadixTree(2, *third_pipe);
+
+    auto fourth_pipe = tasks[3].p;
+    cpu::v2::dispatch_ComputeMorton(1, *fourth_pipe);
+    cpu::v2::dispatch_RadixSort(2, *fourth_pipe);
+    cpu::v2::dispatch_RemoveDuplicates(1, *fourth_pipe);
+    cpu::v2::dispatch_BuildRadixTree(2, *fourth_pipe);
+
+    SYNC_DEVICE();
+  }
+
+  spdlog::info("=============First few stages done====================");
+
+  // ------------------------------
+  // end of setup
+  // ------------------------------
+
+  // stream 0 for morton
+  // stream 1 for radix sort
+  // const auto i = 3;
+
+  for (auto i = 3; i < n_tasks; ++i) {
+    auto first_pipe = tasks[i].p;
+    auto sec_pipe = tasks[i - 1].p;
+    auto third_pipe = tasks[i - 2].p;
+    auto fourth_pipe = tasks[i - 3].p;
+
+    gpu::v2::dispatch_ComputeMorton(1, streams[0], *first_pipe);
+    gpu::v2::dispatch_RadixSort(2, streams[1], *sec_pipe);
+    cpu::v2::dispatch_BuildRadixTree(6, *fourth_pipe);
+
+    gpu::v2::dispatch_RemoveDuplicates(1, streams[2], *third_pipe);
+    // potentially a stream sync here
+
+    // gpu::v2::dispatch_BuildRadixTree(2, streams[3], *fourth_pipe);
+  }
+
+  SYNC_DEVICE();
+
+  CHECK_CUDA_CALL(cudaEventRecord(stop, nullptr));
+  CHECK_CUDA_CALL(cudaEventSynchronize(stop));
+
+  float milliseconds = 0;
+  CHECK_CUDA_CALL(cudaEventElapsedTime(&milliseconds, start, stop));
+  spdlog::info("Total time: {} ms", milliseconds);
+
+  CHECK_CUDA_CALL(cudaEventDestroy(start));
+  CHECK_CUDA_CALL(cudaEventDestroy(stop));
+  for (auto& stream : streams) {
+    CHECK_CUDA_CALL(cudaStreamDestroy(stream));
+  }
+}
+
 int main(const int argc, const char* argv[]) {
   constexpr auto n = 640 * 480;  // ~300k elements
   constexpr auto n_tasks = 80;
@@ -326,7 +466,8 @@ int main(const int argc, const char* argv[]) {
 
   spdlog::info("Method: {}", methodNames[static_cast<int>(method)]);
 
-  spdlog::set_level(spdlog::level::debug);
+  // spdlog::set_level(spdlog::level::debug);
+  spdlog::set_level(spdlog::level::info);
 
   CHECK_CUDA_CALL(cudaMallocManaged(&u_original_input, n * sizeof(glm::vec4)));
   cpu::k_InitRandomVec4(u_original_input, n, 0.0f, 1024.0f, 114514);
@@ -343,6 +484,9 @@ int main(const int argc, const char* argv[]) {
       break;
     case Method::CpuGpuHalfHalf:
       run_cpu_gpu_half_half(n, n_tasks);
+      break;
+    case Method::SimpleCpuGpuPipeline:
+      run_simple_cpu_gpu_pipeline(n, n_tasks);
       break;
     default:
       throw std::runtime_error("Unknown method");

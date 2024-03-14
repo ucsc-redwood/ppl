@@ -18,7 +18,7 @@
 #include "handlers/one_sweep.h"
 
 void BM_GPU_Morton(bm::State& st) {
-  const auto [n, min_coord, range, _] = configs[0];
+  const auto [n, min_coord, range, _] = configs[1];
   const auto grid_size = st.range(0);
   const auto block_size =
       determineBlockSizeAndDisplay(gpu::k_ComputeMortonCode, st);
@@ -48,7 +48,7 @@ BENCHMARK(BM_GPU_Morton)
 // ----------------------------------------------------------------------------
 
 void BM_GPU_Sort(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
   const auto grid_size = st.range(0);
 
   st.counters["hist_block_size"] = OneSweepHandler::GLOBAL_HIST_THREADS;
@@ -116,7 +116,7 @@ BENCHMARK(BM_GPU_Sort)
 // ----------------------------------------------------------------------------
 
 void BM_GPU_Unique(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
   const auto grid_size = st.range(0);
 
   constexpr auto unique_block_size = 256;  // in 'agent.cu'
@@ -162,7 +162,7 @@ BENCHMARK(BM_GPU_Unique)
 // ----------------------------------------------------------------------------
 
 void BM_GPU_RadixTree(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
   const auto grid_size = st.range(0);
 
   const auto block_size =
@@ -219,7 +219,7 @@ BENCHMARK(BM_GPU_RadixTree)
 // ----------------------------------------------------------------------------
 
 void BM_GPU_EdgeCount(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
   const auto grid_size = st.range(0);
 
   const auto block_size = determineBlockSizeAndDisplay(gpu::k_EdgeCount, st);
@@ -265,7 +265,7 @@ BENCHMARK(BM_GPU_EdgeCount)
 // ----------------------------------------------------------------------------
 
 void BM_GPU_PrefixSum(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
 
   constexpr auto block_size = gpu::PrefixSumAgent<int>::n_threads;
   st.counters["block_size"] = block_size;
@@ -292,7 +292,7 @@ BENCHMARK(BM_GPU_PrefixSum)->UseManualTime()->Unit(bm::kMillisecond);
 void BM_GPU_Octree(bm::State& st) {
   CREATE_STREAM
 
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
   const auto grid_size = st.range(0);
 
   Pipe p(n, min_coord, range, init_seed);

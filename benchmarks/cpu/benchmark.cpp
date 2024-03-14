@@ -18,7 +18,7 @@
 namespace bm = benchmark;
 
 static void BM_CPU_Morton(bm::State& st) {
-  const auto [n, min_coord, range, _] = configs[0];
+  const auto [n, min_coord, range, _] = configs[1];
   const auto n_threads = static_cast<int>(st.range(0));
 
   std::vector<glm::vec4> h_points(n);
@@ -39,7 +39,7 @@ BENCHMARK(BM_CPU_Morton)
 // -----------------------------------------------------
 
 static void BM_CPU_Sort(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
   const auto n_threads = st.range(0);
 
   std::vector<unsigned int> h_sort(n);
@@ -54,7 +54,7 @@ static void BM_CPU_Sort(bm::State& st) {
 }
 
 static void BM_CPU_Std_Sort(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
 
   std::vector<unsigned int> h_sort(n);
 
@@ -77,7 +77,7 @@ BENCHMARK(BM_CPU_Std_Sort)->Unit(bm::kMillisecond);
 // -----------------------------------------------------
 
 void BM_CPU_Unique(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
 
   std::vector<unsigned int> data(n);
   std::iota(data.begin(), data.end(), 0);
@@ -94,7 +94,7 @@ BENCHMARK(BM_CPU_Unique)->Unit(bm::kMillisecond);
 // -----------------------------------------------------
 
 void BM_CPU_RadixTree(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
   const auto n_thread = st.range(0);
 
   const auto n_unique = n;
@@ -131,7 +131,7 @@ BENCHMARK(BM_CPU_RadixTree)
 // -----------------------------------------------------
 
 void BM_CPU_EdgeCount(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
   const auto n_threads = st.range(0);
 
   Pipe p(n, min_coord, range, init_seed);
@@ -158,7 +158,7 @@ BENCHMARK(BM_CPU_EdgeCount)
 // -----------------------------------------------------
 
 void BM_CPU_PrefixSum(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
 
   std::vector u_data(n, 1);
   std::vector<int> u_data_out(n);
@@ -173,7 +173,7 @@ BENCHMARK(BM_CPU_PrefixSum)->Unit(bm::kMillisecond);
 // -----------------------------------------------------
 
 void BM_CPU_Octree(bm::State& st) {
-  const auto [n, min_coord, range, init_seed] = configs[0];
+  const auto [n, min_coord, range, init_seed] = configs[1];
   const auto n_threads = st.range(0);
 
   Pipe p(n, min_coord, range, init_seed);

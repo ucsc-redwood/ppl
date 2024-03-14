@@ -2,10 +2,6 @@ set_project("ppl++")
 
 add_rules("mode.debug", "mode.release")
 
--- if is_mode("release") then
---     add_defines("NDEBUG")
--- end
-
 set_languages("cxx17")
 set_warnings("all")
 
