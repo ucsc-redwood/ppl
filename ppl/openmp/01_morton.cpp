@@ -18,14 +18,11 @@ public:
         CPU_ZERO(&cpuset);
         CPU_SET(core_id, &cpuset);
 
-        //pthread_t current_thread = pthread_self();
-
         pid_t pid = gettid();
         return sched_setaffinity(pid, sizeof(cpu_set_t), &cpuset);
     }
 
 };
-
 
 typedef struct {
   const glm::vec4* data;
@@ -44,7 +41,7 @@ int result = ThreadAffinitySetter::stickThisThreadToCore(tData->core_id);
  if (result == 0) {
    //std::cout << "Thread pinned to core " << tData->core_id << std::endl;
  } else {
-   std::cout << "Failed to pin thread to core " << tData->core_id << std::endl;
+   //std::cout << "Failed to pin thread to core " << tData->core_id << std::endl;
  }
  // Perform thread tasks
   for (int i = tData->start; i < tData->end; i++) {
@@ -63,8 +60,6 @@ void k_ComputeMortonCode(const int thread_start,
                          const float range) {
 
   // Split data into chunks
- // std::cerr << "Thread Start " << thread_start << std::endl;
-  //std::cerr << "Thread End  " << thread_end << std::endl;
   const int n_threads = (thread_end - thread_start) + 1;
   int chunkSize = n / n_threads;
   // Initialize threads
@@ -78,7 +73,7 @@ void k_ComputeMortonCode(const int thread_start,
     threadData[i].end = (i == n_threads - 1) ? n: (i + 1) * chunkSize;  // Last thread may have more work
     threadData[i].min_coord = min_coord;
     threadData[i].range = range;
-    threadData[i].core_id = i / 2; // Assign every two threads to a core
+    threadData[i].core_id = (i + thread_start) % n_threads;
 
     pthread_create(&threads[i], NULL, computeMortonCode, (void*)&threadData[i]);
   }
@@ -87,7 +82,5 @@ void k_ComputeMortonCode(const int thread_start,
     pthread_join(threads[i], NULL);
   }
 }
-
-
 
 }  // namespace cpu
